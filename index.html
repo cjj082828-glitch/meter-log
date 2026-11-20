@@ -14,7 +14,20 @@ body{margin:0;background:#F6F7F9;color:var(--ink);font:15px "Malgun Gothic","App
 .btn{border:1px solid var(--line);border-radius:4px;background:#fff;padding:5px 10px;font:inherit;font-size:13px;cursor:pointer;color:var(--ink)}
 .btn.pri{background:var(--blue);border-color:var(--blue);color:#fff}
 .btn:disabled{opacity:.6;cursor:progress}
-#date{font:inherit;font-weight:bold;border:1px solid var(--line);border-radius:4px;padding:3px 6px;background:#fff}
+#date{font:inherit;font-weight:bold;border:1px solid var(--line);border-radius:4px;padding:3px 22px 3px 6px;width:118px;cursor:pointer;caret-color:transparent;color:var(--ink);background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%235B6470' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 7px center}
+.cal{position:fixed;z-index:50;width:272px;padding:8px 10px 10px;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.18);touch-action:none;overscroll-behavior:contain;user-select:none;-webkit-user-select:none}
+.cal-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.cal-t{font-size:15px}
+.cal-nav{width:36px;height:30px;border:1px solid var(--line);border-radius:4px;background:#fff;font:inherit;font-size:16px;cursor:pointer;color:var(--ink)}
+.cal-nav:disabled{opacity:.35;cursor:default}
+.cal-g{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+.cal-w{font-size:12px;color:var(--muted);padding:2px 0}
+.cal-d{height:32px;border:0;border-radius:4px;background:transparent;font:inherit;font-size:14px;cursor:pointer;color:var(--ink)}
+.cal-d:hover{background:var(--head)}
+.cal-d.su,.cal-w.su{color:#C0392B}.cal-d.sa,.cal-w.sa{color:var(--blue)}
+.cal-d.now{box-shadow:inset 0 0 0 1.5px var(--blue);font-weight:bold}
+.cal-d.on{background:var(--blue);color:#fff;font-weight:bold}
+.cal-d:disabled{color:#C3C8CF;cursor:default;background:transparent}
 #dow{font-weight:bold}
 #saved{font-size:13px;color:#3B7A3B}#saved.bad{color:#B8323C;font-weight:bold}
 .sp{flex:1}
@@ -43,6 +56,7 @@ tr.sum td{font-weight:bold}
   .top{padding:8px 10px}.sp{display:none}.wrap{padding:0 8px 16px}.leg{padding:6px 10px}
   td.v,td.c{min-width:70px;font-size:14.5px}td.cell input{font-size:14.5px}td.u,th.u,td.it small{display:none}
   td.it,th.it{position:sticky;left:0;z-index:1;background:#fff}th.it{background:var(--head)}
+  .top{gap:6px}.top .btn{padding:5px 8px}.top .pc{display:none}
 }
 </style>
 </head>
@@ -52,13 +66,13 @@ tr.sum td{font-weight:bold}
   <div class="top">
     <b>수변전일지</b>
     <button class="btn" id="prev" type="button" aria-label="전날">‹</button>
-    <input type="date" id="date"><span id="dow"></span>
+    <input type="text" id="date" readonly inputmode="none" autocomplete="off" aria-label="날짜" aria-haspopup="dialog" title="날짜 고르기"><span id="dow"></span>
     <button class="btn" id="next" type="button" aria-label="다음 날">›</button>
     <button class="btn" id="today" type="button">오늘</button>
     <span id="saved"></span><span class="sp"></span>
-    <button class="btn pri" id="xlsx" type="button">엑셀 받기 (이 달)</button>
+    <button class="btn pri" id="xlsx" type="button">엑셀 <span class="pc">받기 </span>(이달)</button><button class="btn" id="xlsxY" type="button">엑셀 <span class="pc">받기 </span>(올해)</button>
   </div>
-  <div class="leg"><span><i style="background:var(--red)"></i>앞 시각·전날보다 작은 지침</span><span><i style="background:var(--yel)"></i>지난 시각인데 빈칸</span><span><i style="background:var(--auto)"></i>자동 계산 (입력 안 함)</span></div>
+  <div class="leg"><span><i style="background:var(--red)"></i>앞 시각·전날보다 작은 지침 (확인 필요)</span><span><i style="background:var(--yel)"></i>지난 시각인데 빈칸</span><span><i style="background:var(--auto)"></i>자동 계산 (입력 안 함)</span></div>
   <div class="wrap">
     <h2>① 유효전력량 지침 — Wh 화면 값 그대로</h2>
     <div class="scroll"><table id="grid"></table></div>
@@ -260,34 +274,185 @@ tr.sum td{font-weight:bold}
     } catch (e) { setSaved('불러오기 안 됨 — 인터넷 확인 (' + e.message + ')', true); }
   }
   async function go(d) { if (!d || d > kstToday()) return; await flush(); load(d); }
+  // 날짜 자동 넘김 (사용자 11/20) — 켜 둔 채 자정이 지나면, 보던 날이 그때의 '오늘'이고 그날 24시 5칸이 다 차면 저장하고 오늘로 (빈칸 있으면 다음 날 07:00에 — 사용자 11/20).
+  // 일부러 옛 날을 보면 안 넘김 · 칸 입력 중(포커스 + 2분 안에 입력)이면 기다림 · 다른 기기에서 넣은 24시는 5분마다 최신 글로 확인
+  let home = kstToday(), lastIn = 0, peekAt = 0, busy = false;   // home = 마지막으로 확인한 '오늘'
+  const full24 = (o) => PAN.every((p) => val(o, p.id, '24') !== '');
+  async function roll() {
+    $('next').disabled = cur >= kstToday();
+    const t = kstToday(); if (t <= home || busy) return;
+    if (cur !== home) { home = t; return; }
+    const a = document.activeElement; if (a && a.matches && a.matches('td.cell input') && Date.now() - lastIn < 120e3) return;
+    const from = cur, seen = lastIn; busy = true;
+    try {
+      if (!full24(day) && Date.now() < utc(addDay(from, 1)) - 2 * 3600e3) {   // utc(다음 날) = 그날 한국 09:00, − 2시간 = 07:00
+        if (Date.now() - peekAt < 300e3) return;
+        peekAt = Date.now(); if (!full24(await getDay(from))) return;
+      }
+      if (cur !== from || lastIn !== seen) return;
+      home = t; await flush(); if (cur === from) load(t);
+    } catch (e) {} finally { busy = false; }
+  }
 
-  // 엑셀 받기 (이 달) — 브라우저에서 바로 만듦
-  function loadJs(src) { return new Promise((ok, no) => { if (window.XLSX) return ok(); const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => no(new Error('엑셀 도구를 못 불러옴')); document.head.append(s); }); }
-  async function exportMonth() {
-    const b = $('xlsx'); b.disabled = true; const old = b.textContent; b.textContent = '만드는 중…';
+  // 날짜 고르는 작은 달력 — 브라우저 기본 달력은 휠로 내려도 위 '몇 년 몇 월'이 안 바뀜 (사용자 11/20). 휠·위아래로 밀면 한 달씩, 고르면 change
+  function miniCal(inp, max) {
+    const DW = ['일', '월', '화', '수', '목', '금', '토'];
+    const box = el('div', 'cal'); box.hidden = true; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', '날짜 고르기');
+    box.innerHTML = '<div class="cal-h"><button type="button" class="cal-nav" data-m="-1" aria-label="전 달">‹</button><b class="cal-t"></b><button type="button" class="cal-nav" data-m="1" aria-label="다음 달">›</button></div><div class="cal-g"></div>';
+    document.body.append(box);
+    const title = box.querySelector('.cal-t'), g = box.querySelector('.cal-g'), nx = box.querySelector('[data-m="1"]');
+    const p2 = (n) => String(n).padStart(2, '0');
+    let y = 0, m = 0, acc = 0, ty = null;
+    function draw() {
+      const top = max(), today = kstToday(), first = new Date(Date.UTC(y, m - 1, 1)).getUTCDay(), n = new Date(Date.UTC(y, m, 0)).getUTCDate();
+      title.textContent = y + '년 ' + m + '월';
+      nx.disabled = y + '-' + p2(m) >= top.slice(0, 7);
+      g.textContent = '';
+      DW.forEach((w, i) => g.append(el('span', 'cal-w' + (i === 0 ? ' su' : i === 6 ? ' sa' : ''), w)));
+      for (let i = 0; i < 42; i++) {   // 늘 6줄 — 달마다 높이가 안 바뀌어 휠 자리가 그대로
+        const d = i - first + 1;
+        if (d < 1 || d > n) { g.append(el('span')); continue; }
+        const k = y + '-' + p2(m) + '-' + p2(d);
+        const b = el('button', 'cal-d' + (i % 7 === 0 ? ' su' : i % 7 === 6 ? ' sa' : '') + (k === today ? ' now' : '') + (k === inp.value ? ' on' : ''), d);
+        b.type = 'button'; b.dataset.d = k; b.disabled = k > top;
+        g.append(b);
+      }
+    }
+    function step(k) { if (k > 0 && nx.disabled) return; m += k; if (m < 1) { m = 12; y--; } else if (m > 12) { m = 1; y++; } draw(); }
+    function place() { const r = inp.getBoundingClientRect(); box.style.top = Math.max(8, Math.min(r.bottom + 4, innerHeight - box.offsetHeight - 8)) + 'px'; box.style.left = Math.max(8, Math.min(r.left, innerWidth - box.offsetWidth - 8)) + 'px'; }
+    function open() { const v = /^\d{4}-\d{2}-\d{2}$/.test(inp.value) ? inp.value : kstToday(); y = +v.slice(0, 4); m = +v.slice(5, 7); acc = 0; draw(); box.hidden = false; place(); }
+    function close() { box.hidden = true; }
+    inp.addEventListener('click', () => (box.hidden ? open() : close()));
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') { e.preventDefault(); open(); } else if (e.key === 'Escape') close(); });
+    function act(b) {
+      if (!b || b.disabled) return;
+      if (b.dataset.m) { step(Number(b.dataset.m)); return; }
+      inp.value = b.dataset.d; close(); inp.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    box.addEventListener('click', (e) => act(e.target.closest('button')));
+    box.addEventListener('wheel', (e) => { e.preventDefault(); acc += e.deltaY * (e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 300 : 1); if (Math.abs(acc) >= 60) { step(acc > 0 ? 1 : -1); acc = 0; } }, { passive: false });
+    let t0 = null;   // 손가락 : 위아래로 밀면 한 달씩, 안 밀고 떼면 그 단추 (click 은 막음 — 밀기 뒤 click 이 가끔 안 옴)
+    box.addEventListener('touchstart', (e) => { e.stopPropagation(); const p = e.touches[0]; ty = p.clientY; t0 = { x: p.clientX, y: p.clientY, b: e.target.closest('button'), moved: false }; }, { passive: true });
+    box.addEventListener('touchmove', (e) => {
+      e.stopPropagation(); e.preventDefault(); if (ty == null) return;
+      const p = e.touches[0]; if (t0 && (Math.abs(p.clientX - t0.x) > 10 || Math.abs(p.clientY - t0.y) > 10)) t0.moved = true;
+      const dy = p.clientY - ty; if (Math.abs(dy) >= 40) { step(dy < 0 ? 1 : -1); ty = p.clientY; }
+    }, { passive: false });
+    box.addEventListener('touchend', (e) => { e.stopPropagation(); ty = null; const t = t0; t0 = null; if (t && t.b && !t.moved && e.cancelable) { e.preventDefault(); act(t.b); } });
+    box.addEventListener('keydown', (e) => { if (e.key === 'Escape') { close(); inp.focus(); } });
+    document.addEventListener('pointerdown', (e) => { if (!box.hidden && !box.contains(e.target) && e.target !== inp) close(); }, true);
+    window.addEventListener('resize', () => { if (!box.hidden) place(); });
+    window.addEventListener('scroll', (e) => { if (!box.hidden && !box.contains(e.target)) place(); }, true);
+  }
+
+  // 엑셀 받기 = 판과 같은 원래 수변전일지 꼴 (사용자 11/20 "일지웹도") — 이달 = 시트 하나에 1일 ~ 말일 블록을 위에서 아래로 · 올해 = 1월 ~ 이번 달 시트 (이름은 원래 파일 그대로)
+  // 양식 = 일지 문서 slf_<열쇠 해시 16> (원래 수변전일지 하루 블록 28줄의 서식·병합·글자 + styles·theme, 이 열쇠로 암호화 — 업무판/log_form.py --put-log 가 넣음)
+  // 지침만 받으니 반별 금일지침(24시)·전일지침·지시차·사용량만 채우고 kW·전압·전류·온도·한전 계량기·근무자는 빈칸 · 식 : 지시차 = 금일 − 전일, 사용량 = 지시차 × 배율 (특고압·LV-4·5·10 ×1000, LV-9 ×1), 전일지침 = 앞 블록 금일지침 (1일은 전날 웹 값) — 빈칸이면 계산 칸도 빈칸 (IF)
+  // 한셀 : 글자는 sharedStrings (inlineStr 쓰면 한셀이 엉뚱한 글자를 보임), 계산 값도 같이 적음 (다시 계산 안 해도 맞게) · 아래 시트 만드는 코드는 판 board.html 과 같음
+  function loadJs(src, g) { return new Promise((ok, no) => { if (window[g]) return ok(); const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => no(new Error('엑셀 도구를 못 불러옴')); document.head.append(s); }); }
+  const LOG_ROW = [['HV', 13, 1000], ['LV4', 15, 1000], ['LV5', 16, 1000], ['LV9', 17, 1], ['LV10', 18, 1000]];   // 반, 블록 안 줄 (T 금일·W 전일·Z 지시차·AB 사용량), 배율
+  let xform = null;
+  async function formGet() {
+    if (xform) return xform;
+    const res = await fetch(BASE + 'slf_' + PFX.slice(3, 19) + '?key=' + API);
+    if (res.status === 404) throw new Error('엑셀 양식이 아직 없음');
+    if (!res.ok) throw new Error('양식 읽기 ' + res.status);
+    const j = await res.json(); const v = j.fields && j.fields.v && j.fields.v.stringValue;
+    const o = v ? await dec(v) : null;
+    if (!o || !o.rows) throw new Error('엑셀 양식을 못 풂');
+    return (xform = o);
+  }
+  async function rangeDays(from, to) {   // from ~ to 날짜 문서를 한 번에 (문서 이름 = 열쇠 해시 + 날짜라 이름 범위로)
+    const root = BASE.slice(BASE.indexOf('projects/')), lim = (op, d) => ({ fieldFilter: { field: { fieldPath: '__name__' }, op, value: { referenceValue: root + PFX + d } } });
+    const res = await fetch(BASE.replace(/\/ppld\/$/, ':runQuery') + '?key=' + API, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'ppld' }], where: { compositeFilter: { op: 'AND', filters: [lim('GREATER_THAN_OR_EQUAL', from), lim('LESS_THAN_OR_EQUAL', to)] } }, orderBy: [{ field: { fieldPath: '__name__' } }] } }) });
+    if (!res.ok) throw new Error('읽기 ' + res.status);
+    const out = {};
+    for (const it of await res.json()) {
+      const doc = it.document; if (!doc) continue;
+      const v = doc.fields && doc.fields.v && doc.fields.v.stringValue, o = v ? await dec(v) : null;
+      if (o && typeof o === 'object') out[doc.name.slice(doc.name.lastIndexOf('/') + 1 + PFX.length)] = { r: o.r || {}, x: o.x || {}, u: o.u };
+    }
+    return out;
+  }
+  const xesc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const colN = (n) => { let s = ''; for (; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + (n - 1) % 26) + s; return s; };
+  function logSheetXml(form, ym, days, str, first) {   // 한 달 시트 — 하루 블록을 위에서 아래로
+    const [y, m] = ym.split('-').map(Number), n = new Date(Date.UTC(y, m, 0)).getUTCDate(), H = form.h;
+    const rows = [], merges = [], brks = [];
+    const T24 = (o, id) => { if (!o || !o.r[id]) return null; const v = num(o.r[id]['24']); return v == null || Number.isNaN(v) ? null : v; };
+    for (let i = 0; i < n; i++) {
+      const d = ym + '-' + String(i + 1).padStart(2, '0'), b = i * H, a = days[d], p = days[addDay(d, -1)];
+      const put = {}, at = (c, r) => colN(c) + (b + r), pv = (c, r) => colN(c) + (b - H + r);   // put['T13'] = {v} | {f, v}
+      put.A2 = { v: (utc(d) - Date.UTC(1899, 11, 30)) / 864e5 };   // 날짜 (엑셀 날짜 수)
+      LOG_ROW.forEach(([id, r, mul]) => {
+        const t = T24(a, id), w = T24(p, id), z = t != null && w != null ? t - w : '';
+        if (t != null) put['T' + r] = { v: t };
+        put['W' + r] = i ? { f: 'IF(' + pv(20, r) + '="","",' + pv(20, r) + ')', v: w == null ? '' : w } : (w != null ? { v: w } : null);   // =T앞 만 쓰면 앞날이 빈칸일 때 0이 돼 사용량이 튐 (한셀 11/7 시험)
+        if (a && a.x[id]) { put['Z' + r] = put['AB' + r] = { s: '교체' }; return; }   // 계량기 교체·초기화한 날 = 웹 화면처럼 '교체' (빼면 큰 음수)
+        put['Z' + r] = { f: 'IF(OR(' + at(20, r) + '="",' + at(23, r) + '=""),"",' + at(20, r) + '-' + at(23, r) + ')', v: z };
+        put['AB' + r] = { f: 'IF(' + at(26, r) + '="","",' + at(26, r) + '*' + mul + ')', v: z === '' ? '' : z * mul };
+      });
+      for (const r of [15, 16, 17]) {   // 한전 계량기 (웹엔 없음 — 손으로 적으면 계산되게 원래 식, 빈칸이면 빈칸)
+        if (i) put['E' + r] = { f: 'IF(' + pv(2, r) + '="","",' + pv(2, r) + ')', v: '' };
+        put['H' + r] = { f: 'IF(OR(' + at(2, r) + '="",' + at(5, r) + '=""),"",(' + at(2, r) + '-' + at(5, r) + ')*3600)', v: '' };
+        if (i) put['K' + r] = { f: 'IF(' + pv(14, r) + '="","",' + pv(14, r) + ')', v: '' };
+        put['N' + r] = { f: 'IF(' + at(8, r) + '="","",' + at(8, r) + '+IF(' + at(11, r) + '="",0,' + at(11, r) + '))', v: '' };
+      }
+      for (const [c, c2] of [[2, 4], [5, 7], [8, 10], [14, 16]]) { const rg = at(c, 15) + ':' + at(c2, 17); put[colN(c) + 18] = { f: 'IF(COUNT(' + rg + ')=0,"",SUM(' + rg + '))', v: '' }; }
+      if (i) put.K18 = { f: 'IF(' + pv(14, 18) + '="","",' + pv(14, 18) + ')', v: '' };
+      for (const row of form.rows) {
+        const R = b + row.r, cs = new Map(row.cells.map((c) => [c[0], c]));
+        for (const k of Object.keys(put)) { const mm = k.match(/^([A-Z]+)(\d+)$/); if (+mm[2] === row.r && put[k]) { const ci = [...mm[1]].reduce((x, ch) => x * 26 + ch.charCodeAt(0) - 64, 0); if (!cs.has(ci)) cs.set(ci, [ci, 0, null]); } }
+        let xml = '<row r="' + R + '"' + (row.ht ? ' ht="' + row.ht + '" customHeight="1"' : '') + '>';
+        for (const [c, s, txt] of [...cs.values()].sort((x, z2) => x[0] - z2[0])) {
+          const ref2 = colN(c) + R, o = put[colN(c) + row.r];
+          if (o && o.f) xml += o.v === '' || o.v == null ? '<c r="' + ref2 + '" s="' + s + '" t="str"><f>' + xesc(o.f) + '</f><v></v></c>' : '<c r="' + ref2 + '" s="' + s + '"><f>' + xesc(o.f) + '</f><v>' + o.v + '</v></c>';
+          else if (o && o.s != null) xml += '<c r="' + ref2 + '" s="' + s + '" t="s"><v>' + str(o.s) + '</v></c>';
+          else if (o) xml += '<c r="' + ref2 + '" s="' + s + '"><v>' + o.v + '</v></c>';
+          else if (txt) xml += '<c r="' + ref2 + '" s="' + s + '" t="s"><v>' + str(txt) + '</v></c>';
+          else xml += '<c r="' + ref2 + '" s="' + s + '"/>';
+        }
+        rows.push(xml + '</row>');
+      }
+      form.merges.forEach(([c1, r1, c2, r2]) => merges.push('<mergeCell ref="' + colN(c1) + (b + r1) + ':' + colN(c2) + (b + r2) + '"/>'));
+      if (i < n - 1) brks.push('<brk id="' + (b + H) + '" max="16383" man="1"/>');   // 인쇄하면 하루 한 장
+    }
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+      + '<dimension ref="A1:AD' + n * H + '"/><sheetViews><sheetView ' + (first ? 'tabSelected="1" ' : '') + 'zoomScaleNormal="100" workbookViewId="0"/></sheetViews>'
+      + form.fmt + form.cols + '<sheetData>' + rows.join('') + '</sheetData><mergeCells count="' + merges.length + '">' + merges.join('') + '</mergeCells>'
+      + form.page + '<rowBreaks count="' + brks.length + '" manualBreakCount="' + brks.length + '">' + brks.join('') + '</rowBreaks></worksheet>';
+  }
+  async function exportXlsx(year) {
+    const b = $(year ? 'xlsxY' : 'xlsx'); const old = b.textContent; b.disabled = true; b.textContent = '만드는 중…';
     try {
       await flush();
-      await loadJs('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
-      const ym = cur.slice(0, 7), last = [ym + '-01'];
-      let x = ym + '-01'; while (addDay(x, 1).slice(0, 7) === ym && addDay(x, 1) <= kstToday()) { x = addDay(x, 1); last.push(x); }
-      const days = {}; const want = [addDay(ym + '-01', -1), ...last];
-      for (let i = 0; i < want.length; i += 4) { const part = want.slice(i, i + 4); const got = await Promise.all(part.map(getDay)); part.forEach((k, j) => { days[k] = got[j]; }); }
-      const head = ['날짜', '요일', '반', '단위', '전날 24시', ...TIMES.map((t) => t + '시'), '교체·초기화', ...labels().map((l) => l + ' kWh'), ...(TIMES.length > 1 ? ['하루 kWh'] : [])];
-      const aoa = [head];
-      const keep = { day, prev };
-      for (const d of last) {
-        day = days[d]; prev = days[addDay(d, -1)] || blank();
-        for (const p of PAN) {
-          const n = (s) => { const v = num(s); return v == null || Number.isNaN(v) ? s : v; };
-          const cv = (v) => (v === 'x' ? '교체' : v === 'neg' ? '확인' : v);
-          aoa.push([d, DOW[new Date(utc(d)).getUTCDay()], p.name, p.unit, n(val(prev, p.id, '24')), ...TIMES.map((t) => n(val(day, p.id, t))), day.x[p.id] ? 'O' : '', ...segs(p).map(cv), ...(TIMES.length > 1 ? [cv(dayUse(p))] : [])]);
-        }
-      }
-      ({ day, prev } = keep);
-      const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!cols'] = head.map((h, i) => ({ wch: i === 2 ? 16 : 12 }));
-      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, ym);
-      XLSX.writeFile(wb, '수변전일지_' + ym + '.xlsx');
-    } catch (e) { setSaved('엑셀 못 만듦 (' + e.message + ')', true); }
+      const [form] = await Promise.all([formGet(), loadJs('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js', 'JSZip')]);
+      const y = +cur.slice(0, 4), now = kstToday(), last = year ? (y < +now.slice(0, 4) ? 12 : +now.slice(5, 7)) : +cur.slice(5, 7);
+      const yms = []; for (let m = year ? 1 : last; m <= last; m++) yms.push(y + '-' + String(m).padStart(2, '0'));
+      const days = await rangeDays(addDay(yms[0] + '-01', -1), yms[yms.length - 1] + '-31');   // 1일 전일지침용으로 하루 앞부터
+      const sst = [], sidx = new Map(), str = (t) => { if (!sidx.has(t)) { sidx.set(t, sst.length); sst.push(t); } return sidx.get(t); };
+      const zip = new JSZip(), N = yms.length, names = yms.map((ym) => form.names[+ym.slice(5) - 1] || (+ym.slice(5) + '월'));
+      yms.forEach((ym, i) => zip.file('xl/worksheets/sheet' + (i + 1) + '.xml', logSheetXml(form, ym, days, str, i === 0)));
+      const X = 'http://schemas.openxmlformats.org/', ct = 'application/vnd.openxmlformats-officedocument.';
+      zip.file('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="' + X + 'package/2006/content-types"><Default Extension="rels" ContentType="' + ct.replace('officedocument.', '') + 'package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>'
+        + '<Override PartName="/xl/workbook.xml" ContentType="' + ct + 'spreadsheetml.sheet.main+xml"/>' + yms.map((_, i) => '<Override PartName="/xl/worksheets/sheet' + (i + 1) + '.xml" ContentType="' + ct + 'spreadsheetml.worksheet+xml"/>').join('')
+        + '<Override PartName="/xl/theme/theme1.xml" ContentType="' + ct + 'theme+xml"/><Override PartName="/xl/styles.xml" ContentType="' + ct + 'spreadsheetml.styles+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="' + ct + 'spreadsheetml.sharedStrings+xml"/>'
+        + '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="' + ct + 'extended-properties+xml"/></Types>');
+      zip.file('_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="' + X + 'package/2006/relationships"><Relationship Id="rId1" Type="' + X + 'officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/><Relationship Id="rId2" Type="' + X + 'package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="' + X + 'officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>');
+      zip.file('docProps/core.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<cp:coreProperties xmlns:cp="' + X + 'package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>수변전일지</dc:title><dcterms:created xsi:type="dcterms:W3CDTF">' + new Date().toISOString().slice(0, 19) + 'Z</dcterms:created></cp:coreProperties>');
+      zip.file('docProps/app.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Properties xmlns="' + X + 'officeDocument/2006/extended-properties"><Application>Microsoft Excel</Application></Properties>');
+      zip.file('xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<workbook xmlns="' + X + 'spreadsheetml/2006/main" xmlns:r="' + X + 'officeDocument/2006/relationships"><workbookPr defaultThemeVersion="124226"/><bookViews><workbookView activeTab="0"/></bookViews><sheets>'
+        + names.map((nm, i) => '<sheet name="' + xesc(nm) + '" sheetId="' + (i + 1) + '" r:id="rId' + (i + 1) + '"/>').join('') + '</sheets><calcPr calcId="145621" fullCalcOnLoad="1"/></workbook>');
+      zip.file('xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="' + X + 'package/2006/relationships">' + yms.map((_, i) => '<Relationship Id="rId' + (i + 1) + '" Type="' + X + 'officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + (i + 1) + '.xml"/>').join('')
+        + '<Relationship Id="rId' + (N + 1) + '" Type="' + X + 'officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId' + (N + 2) + '" Type="' + X + 'officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/><Relationship Id="rId' + (N + 3) + '" Type="' + X + 'officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/></Relationships>');
+      zip.file('xl/styles.xml', form.styles); zip.file('xl/theme/theme1.xml', form.theme);
+      zip.file('xl/sharedStrings.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<sst xmlns="' + X + 'spreadsheetml/2006/main" count="' + sst.length + '" uniqueCount="' + sst.length + '">' + sst.map((t) => '<si><t xml:space="preserve">' + xesc(t) + '</t></si>').join('') + '</sst>');
+      const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', mimeType: ct + 'spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob), a = document.createElement('a');
+      a.href = url; a.download = '부산메리츠타워_수변전일지_' + (year ? y + '년' : yms[0]) + '.xlsx'; document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (e) { setSaved('엑셀 못 만듦 (' + (e && e.message ? e.message : e) + ')', true); }
     b.disabled = false; b.textContent = old;
   }
 
@@ -322,8 +487,13 @@ tr.sum td{font-weight:bold}
   $('next').addEventListener('click', () => go(addDay(cur, 1)));
   $('today').addEventListener('click', () => go(kstToday()));
   $('date').addEventListener('change', () => go($('date').value));
-  $('xlsx').addEventListener('click', exportMonth);
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
+  miniCal($('date'), kstToday);
+  $('xlsx').addEventListener('click', () => exportXlsx(false));
+  $('xlsxY').addEventListener('click', () => exportXlsx(true));
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); else roll(); });
+  ['input', 'paste', 'keydown'].forEach((n) => grid.addEventListener(n, () => { lastIn = Date.now(); }));
+  grid.addEventListener('focusout', () => setTimeout(roll, 0));   // 칸 입력 끝나면 넘김 검사
+  setInterval(roll, 60e3);
   window.addEventListener('beforeunload', (e) => { if (timer || Object.keys(dirty).length) { save(); e.preventDefault(); e.returnValue = ''; } });
   setInterval(() => { if (document.activeElement && document.activeElement.matches && document.activeElement.matches('td.cell input')) return; paint(); }, 60e3);   // 시각 지나면 노랑
 
