@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>수변전일지</title>
+<style>
+:root{--line:#C9CED6;--head:#EEF1F5;--auto:#E4E7EB;--red:#F8C9C9;--yel:#FFF0A8;--blue:#1F6FD1;--ink:#1D232B;--muted:#5B6470}
+*{box-sizing:border-box}
+body{margin:0;background:#F6F7F9;color:var(--ink);font:15px "Malgun Gothic","Apple SD Gothic Neo",sans-serif}
+.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 16px;background:#fff;border-bottom:2px solid var(--blue)}
+.top b{font-size:18px;margin-right:4px}
+.btn{border:1px solid var(--line);border-radius:4px;background:#fff;padding:5px 10px;font:inherit;font-size:13px;cursor:pointer;color:var(--ink)}
+.btn.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn:disabled{opacity:.6;cursor:progress}
+#date{font:inherit;font-weight:bold;border:1px solid var(--line);border-radius:4px;padding:3px 6px;background:#fff}
+#dow{font-weight:bold}
+#saved{font-size:13px;color:#3B7A3B}#saved.bad{color:#B8323C;font-weight:bold}
+.sp{flex:1}
+.leg{display:flex;flex-wrap:wrap;gap:14px;padding:8px 16px;font-size:12.5px;color:#4A535E}
+.leg i{display:inline-block;width:14px;height:14px;border:1px solid var(--line);vertical-align:-2px;margin-right:4px}
+.wrap{padding:0 16px 24px;max-width:1100px}
+h2{font-size:15px;margin:14px 0 6px}
+table{border-collapse:collapse;background:#fff;width:100%}
+th,td{border:1px solid var(--line);padding:0;height:36px;white-space:nowrap}
+th{background:var(--head);font-size:13px;padding:4px 8px}
+th small{display:block;font-weight:normal;color:var(--muted);font-size:11.5px}
+td.it{padding:4px 8px}td.it small{display:block;color:var(--muted);font-size:12px}
+td.u{color:var(--muted);font-size:13px;text-align:center;padding:0 6px}
+td.v,td.c{text-align:right;font-family:Consolas,"Malgun Gothic",monospace;font-size:15.5px;padding:0 8px;min-width:92px}
+td.c,td.auto{background:var(--auto);color:#3F4852}
+td.cell input{width:100%;height:35px;border:0;padding:0 8px;text-align:right;font-family:Consolas,"Malgun Gothic",monospace;font-size:15.5px;background:transparent;outline:none}
+td.cell:focus-within{outline:2px solid var(--blue);outline-offset:-2px}
+td.red{background:var(--red)}td.yel{background:var(--yel)}
+td.x{text-align:center;padding:0 6px}td.x input{width:18px;height:18px}
+td.xo{color:var(--muted);font-family:inherit;font-size:13px;text-align:center}
+tr.sum td{font-weight:bold}
+.note{font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.55}
+.scroll{overflow-x:auto}
+#nokey{padding:40px 16px;font-size:16px}
+@media (max-width:700px){
+  .top{padding:8px 10px}.sp{display:none}.wrap{padding:0 8px 16px}.leg{padding:6px 10px}
+  td.v,td.c{min-width:70px;font-size:14.5px}td.cell input{font-size:14.5px}td.u,th.u,td.it small{display:none}
+  td.it,th.it{position:sticky;left:0;z-index:1;background:#fff}th.it{background:var(--head)}
+}
+</style>
+</head>
+<body>
+<div id="nokey" hidden>받은 링크로 열어 주세요.</div>
+<div id="app" hidden>
+  <div class="top">
+    <b>수변전일지</b>
+    <button class="btn" id="prev" type="button" aria-label="전날">‹</button>
+    <input type="date" id="date"><span id="dow"></span>
+    <button class="btn" id="next" type="button" aria-label="다음 날">›</button>
+    <button class="btn" id="today" type="button">오늘</button>
+    <span id="saved"></span><span class="sp"></span>
+    <button class="btn pri" id="xlsx" type="button">엑셀 받기 (이 달)</button>
+  </div>
+  <div class="leg"><span><i style="background:var(--red)"></i>앞 시각·전날보다 작은 지침</span><span><i style="background:var(--yel)"></i>지난 시각인데 빈칸</span><span><i style="background:var(--auto)"></i>자동 계산 (입력 안 함)</span></div>
+  <div class="wrap">
+    <h2>① 유효전력량 지침 — Wh 화면 값 그대로</h2>
+    <div class="scroll"><table id="grid"></table></div>
+    <div class="note">Wh(유효전력량) 화면 숫자를 그대로 넣음 — Varh(무효) 아님. 계량기를 바꾸거나 0으로 돌린 날은 '교체·초기화'에 체크 → 그날 그 반 사용량은 계산에서 뺌</div>
+    <h2>② 시간대별 사용량 kWh (자동)</h2>
+    <div class="scroll"><table id="calc"></table></div>
+    <div class="note" id="calcNote"></div>
+  </div>
+</div>
+<script>
+(() => {
+  // 지침만 받는 수변전일지 (2026-11) — 저장은 열쇠로 암호화한 글만, 열쇠는 링크 # 뒤 (서버로 안 감)
+  const TIMES = ['10', '14', '18', '24'];   // 시각 — 하루 한 번(24시)으로 바꾸려면 ['24'] 만 남기면 표·계산이 따라감
+  const PAN = [
+    { id: 'HV', name: '특고압 HV-4', sub: 'GIPAM 115FI · Wh 키', unit: 'MWh', mul: 1000 },
+    { id: 'LV4', name: 'LV-4 전등·전열', sub: 'TR-1 · GIMAC · WH', unit: 'MWh', mul: 1000 },
+    { id: 'LV5', name: 'LV-5 냉·난방', sub: 'TR-2 · GIMAC · WH', unit: 'MWh', mul: 1000 },
+    { id: 'LV9', name: 'LV-9 일반동력', sub: 'TR-3 · GIMAC · WH', unit: 'kWh', mul: 1 },
+    { id: 'LV10', name: 'LV-10 비상동력', sub: 'TR-4 · GIMAC · WH', unit: 'MWh', mul: 1000 },
+  ];
+  const LVS = PAN.filter((p) => p.id !== 'HV');
+  const API = 'AIzaSyD-D7JrKxQybk1ts3UPUEM-DY9S0v9Py-w';
+  const BASE = 'https://firestore.googleapis.com/v1/projects/automatic-becf5/databases/(default)/documents/ppld/';
+  const DOW = ['일', '월', '화', '수', '목', '금', '토'];
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const utc = (s) => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d); };
+  const iso = (t) => new Date(t).toISOString().slice(0, 10);
+  const addDay = (s, n) => iso(utc(s) + n * 864e5);
+  const kstToday = () => iso(Date.now() + 9 * 3600e3);
+  const hm = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(11, 16);
+  const fmt = (n) => Math.round(n).toLocaleString('ko-KR');
+  const num = (s) => { s = String(s == null ? '' : s).replace(/[,\s]/g, ''); return s === '' ? null : (/^-?\d+(\.\d+)?$/.test(s) ? Number(s) : NaN); };
+
+  // 열쇠 : 링크 # 뒤 → 이 브라우저에 기억하고 주소창에서 지움
+  let SECRET = '';
+  try {
+    if (location.hash.length > 1) { SECRET = decodeURIComponent(location.hash.slice(1)); localStorage.setItem('sl_k', SECRET); history.replaceState(null, '', location.pathname + location.search); }
+    else SECRET = localStorage.getItem('sl_k') || '';
+  } catch (e) {}
+  if (!SECRET) { $('nokey').hidden = false; return; }
+
+  // 암호 : PBKDF2-SHA256 15만 회 → AES-GCM, 저장값 = base64(iv 12바이트 + 암호문), 문서 이름 = sl_ + 열쇠 해시 앞 16자 + _날짜
+  const te = new TextEncoder(), td = new TextDecoder();
+  const toB64 = (u8) => { let s = ''; for (let i = 0; i < u8.length; i += 8192) s += String.fromCharCode.apply(null, u8.subarray(i, i + 8192)); return btoa(s); };
+  const fromB64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+  const hex = (u8) => Array.from(u8, (b) => b.toString(16).padStart(2, '0')).join('');
+  let KEY = null, PFX = '';
+  async function initKey() {
+    PFX = 'sl_' + hex(new Uint8Array(await crypto.subtle.digest('SHA-256', te.encode(SECRET)))).slice(0, 16) + '_';
+    const base = await crypto.subtle.importKey('raw', te.encode(SECRET), 'PBKDF2', false, ['deriveKey']);
+    KEY = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: te.encode('sublog-v1'), iterations: 150000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  }
+  async function enc(obj) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, KEY, te.encode(JSON.stringify(obj))));
+    const out = new Uint8Array(12 + ct.length); out.set(iv); out.set(ct, 12); return toB64(out);
+  }
+  async function dec(s) {
+    try { const u = fromB64(s); return JSON.parse(td.decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: u.subarray(0, 12) }, KEY, u.subarray(12)))); } catch (e) { return null; }
+  }
+  const blank = () => ({ r: {}, x: {} });
+  async function getDay(d) {   // 없으면 빈 날, 못 읽으면 오류
+    const res = await fetch(BASE + PFX + d + '?key=' + API);
+    if (res.status === 404) return blank();
+    if (!res.ok) throw new Error('읽기 ' + res.status);
+    const j = await res.json(); const v = j.fields && j.fields.v && j.fields.v.stringValue;
+    const o = v ? await dec(v) : null;
+    return o && typeof o === 'object' ? { r: o.r || {}, x: o.x || {}, u: o.u } : blank();
+  }
+  async function putDay(d, o) {
+    const res = await fetch(BASE + PFX + d + '?key=' + API, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields: { v: { stringValue: await enc(o) }, t: { integerValue: String(Date.now()) } } }) });
+    if (!res.ok) throw new Error('저장 ' + res.status);
+  }
+
+  // 상태
+  let cur = kstToday(), day = blank(), prev = blank(), dirty = {}, dirtyX = {}, timer = null, saving = null;
+  const val = (o, p, t) => ((o.r[p] || {})[t] == null ? '' : String(o.r[p][t]));
+  const pointsOf = (p) => [val(prev, p.id, '24'), ...TIMES.map((t) => val(day, p.id, t))];   // 전날 24시 + 오늘 시각들
+  const passed = (d, t) => Date.now() > utc(d) + (Number(t) - 9) * 3600e3 + 3600e3;   // 그 시각(한국) + 1시간 지났나
+
+  function buildGrid() {
+    const g = $('grid'); g.replaceChildren();
+    const hr = el('tr'); hr.append(el('th', 'it', '반 (화면)'), el('th', 'u', '단위'), el('th', null, '전날 24시'));
+    TIMES.forEach((t) => { const th = el('th', null, t + '시'); th.append(el('small', null, 'Wh 화면 값')); hr.append(th); });
+    hr.append(el('th', null, '교체·초기화')); g.append(hr);
+    PAN.forEach((p, pi) => {
+      const tr = el('tr'); const it = el('td', 'it', p.name); it.append(el('small', null, p.sub + ' · ' + p.unit));
+      tr.append(it, el('td', 'u', p.unit), el('td', 'c', val(prev, p.id, '24')));
+      TIMES.forEach((t, ti) => {
+        const td = el('td', 'cell'); const inp = el('input'); inp.type = 'text'; inp.inputMode = 'decimal'; inp.autocomplete = 'off';
+        inp.dataset.p = pi; inp.dataset.t = ti; inp.value = val(day, p.id, t); inp.setAttribute('aria-label', p.name + ' ' + t + '시');
+        td.append(inp); tr.append(td);
+      });
+      const tx = el('td', 'x'); const cb = el('input'); cb.type = 'checkbox'; cb.dataset.p = pi; cb.checked = !!day.x[p.id]; cb.setAttribute('aria-label', p.name + ' 교체·초기화');
+      tx.append(cb); tr.append(tx); g.append(tr);
+    });
+  }
+  function paint() {   // 칸 색 : 빨강 = 앞 점보다 작음(또는 숫자 아님), 노랑 = 지난 시각인데 빈칸
+    $('grid').querySelectorAll('td.cell input').forEach((inp) => {
+      const p = PAN[inp.dataset.p], ti = Number(inp.dataset.t), td = inp.parentNode;
+      const v = num(inp.value); let red = Number.isNaN(v), yel = false;
+      if (v == null) yel = passed(cur, TIMES[ti]);
+      else if (!red && !day.x[p.id]) {
+        const pts = pointsOf(p).slice(0, ti + 1).map(num).filter((x) => x != null && !Number.isNaN(x));
+        if (pts.length && v < pts[pts.length - 1]) red = true;
+      }
+      td.classList.toggle('red', red); td.classList.toggle('yel', yel);
+    });
+  }
+  function segs(p) {   // 시간대 사용량 kWh — null = 비었음, 'neg' = 작아짐, 'x' = 교체
+    if (day.x[p.id]) return TIMES.map(() => 'x');
+    const pts = pointsOf(p).map(num);
+    return TIMES.map((t, i) => {
+      const a = pts[i], b = pts[i + 1];
+      if (a == null || b == null || Number.isNaN(a) || Number.isNaN(b)) return null;
+      const d = (b - a) * p.mul; return d < 0 ? 'neg' : Math.round(d);
+    });
+  }
+  function dayUse(p) {
+    if (day.x[p.id] || !TIMES.includes('24')) return day.x[p.id] ? 'x' : null;
+    const a = num(val(prev, p.id, '24')), b = num(val(day, p.id, '24'));
+    if (a == null || b == null || Number.isNaN(a) || Number.isNaN(b)) return null;
+    const d = (b - a) * p.mul; return d < 0 ? 'neg' : Math.round(d);
+  }
+  const labels = () => { const pts = ['0', ...TIMES]; return TIMES.map((t, i) => (pts[i] === '0' && t === '24' ? '하루' : pts[i] + ' ~ ' + t + '시')); };
+  const cellOf = (v) => { const td = el('td', 'c'); if (v === 'x') { td.textContent = '교체'; td.classList.add('xo'); } else if (v === 'neg') { td.textContent = '확인'; td.classList.add('red'); } else if (v != null) td.textContent = fmt(v); return td; };
+  function calc() {
+    const c = $('calc'); c.replaceChildren();
+    const one = TIMES.length === 1;
+    const hr = el('tr'); hr.append(el('th', 'it', '반')); labels().forEach((l) => hr.append(el('th', null, l))); if (!one) hr.append(el('th', null, '하루')); c.append(hr);
+    const rows = PAN.map((p) => ({ p, s: segs(p), d: dayUse(p) }));
+    rows.forEach(({ p, s, d }) => { const tr = el('tr'); tr.append(el('td', 'it', p.name)); s.forEach((v) => tr.append(cellOf(v))); if (!one) tr.append(cellOf(d)); c.append(tr); });
+    const okN = (v) => typeof v === 'number';
+    const lvSum = (pick) => { const xs = rows.filter((r) => r.p.id !== 'HV').map(pick); return xs.every(okN) ? xs.reduce((a, b) => a + b, 0) : null; };
+    const cols = TIMES.map((t, i) => i).concat(one ? [] : ['d']);
+    const pick = (k) => (r) => (k === 'd' ? r.d : r.s[k]);
+    const lv = cols.map((k) => lvSum(pick(k))), hv = cols.map((k) => pick(k)(rows[0]));
+    const t1 = el('tr', 'sum'); t1.append(el('td', 'it', 'LV 합계')); lv.forEach((v) => t1.append(cellOf(v))); c.append(t1);
+    const t2 = el('tr', 'sum'); t2.append(el('td', 'it', '특고압 − LV 합계'));
+    cols.forEach((k, i) => { const a = hv[i], b = lv[i]; const td = el('td', 'c'); if (okN(a) && okN(b)) td.textContent = (a - b >= 0 ? '+' : '−') + fmt(Math.abs(a - b)) + (b ? ' (' + ((a - b) / b * 100 >= 0 ? '+' : '') + ((a - b) / b * 100).toFixed(1) + '%)' : ''); t2.append(td); });
+    c.append(t2);
+    $('calcNote').textContent = (one ? '하루 = 24시 지침 − 전날 24시 지침.' : '0 ~ 10시 = 전날 24시 → 10시, 하루 = 24시 지침 − 전날 24시 지침.') + ' MWh 반은 × 1000. 특고압·LV-4·LV-5 화면은 0.1 MWh(100 kWh) 단위라 칸마다 ±100 kWh 오차.';
+  }
+  const refresh = () => { paint(); calc(); };
+
+  // 저장 : 몇 초 모아서, 저장 직전 최신 글을 다시 읽어 바꾼 칸만 얹음 (두 사람이 같이 넣어도 남의 칸을 안 덮게)
+  const setSaved = (s, bad) => { $('saved').textContent = s; $('saved').classList.toggle('bad', !!bad); };
+  function schedule() { clearTimeout(timer); setSaved('저장 중…'); timer = setTimeout(save, 1200); }
+  async function save() {
+    clearTimeout(timer); timer = null;
+    if (saving) { await saving; if (!Object.keys(dirty).length && !Object.keys(dirtyX).length) return; }
+    const d = cur, sendR = { ...dirty }, sendX = { ...dirtyX };
+    if (!Object.keys(sendR).length && !Object.keys(sendX).length) return;
+    saving = (async () => {
+      try {
+        const latest = await getDay(d);
+        for (const k in sendR) { const [p, t] = k.split('|'); latest.r[p] = latest.r[p] || {}; if (sendR[k] === '') delete latest.r[p][t]; else latest.r[p][t] = sendR[k]; }
+        for (const p in sendX) latest.x[p] = sendX[p];
+        latest.u = new Date().toISOString();
+        await putDay(d, latest);
+        for (const k in sendR) if (dirty[k] === sendR[k]) delete dirty[k];
+        for (const p in sendX) if (dirtyX[p] === sendX[p]) delete dirtyX[p];
+        if (d === cur) {   // 남이 넣은 칸도 보이게 (내가 고치는 중인 칸은 그대로)
+          day.r = latest.r; day.x = latest.x;
+          for (const k in dirty) { const [p, t] = k.split('|'); day.r[p] = day.r[p] || {}; day.r[p][t] = dirty[k]; }
+          Object.assign(day.x, dirtyX);
+          $('grid').querySelectorAll('td.cell input').forEach((inp) => { if (document.activeElement !== inp) inp.value = val(day, PAN[inp.dataset.p].id, TIMES[inp.dataset.t]); });
+          refresh();
+        }
+        setSaved(Object.keys(dirty).length ? '저장 중…' : '자동 저장됨 ' + hm());
+      } catch (e) { setSaved('저장 안 됨 — 인터넷 확인 (' + e.message + ')', true); }
+    })();
+    await saving; saving = null;
+    if (Object.keys(dirty).length || Object.keys(dirtyX).length) schedule();
+  }
+  async function flush() { if (timer || Object.keys(dirty).length || Object.keys(dirtyX).length) await save(); if (saving) await saving; }
+
+  function setVal(inp, v) {
+    const p = PAN[inp.dataset.p], t = TIMES[inp.dataset.t];
+    v = String(v).trim(); inp.value = v;
+    day.r[p.id] = day.r[p.id] || {}; if (v === '') delete day.r[p.id][t]; else day.r[p.id][t] = v;
+    dirty[p.id + '|' + t] = v;
+  }
+  const inputAt = (pi, ti) => $('grid').querySelector('td.cell input[data-p="' + pi + '"][data-t="' + ti + '"]');
+  function move(inp, dp, dt) { const n = inputAt(Number(inp.dataset.p) + dp, Number(inp.dataset.t) + dt); if (n) { n.focus(); n.select(); } }
+
+  // 날짜
+  async function load(d) {
+    cur = d; $('date').value = d; $('dow').textContent = '(' + DOW[new Date(utc(d)).getUTCDay()] + ')';
+    $('next').disabled = d >= kstToday();
+    setSaved('불러오는 중…');
+    try {
+      const [a, b] = await Promise.all([getDay(d), getDay(addDay(d, -1))]);
+      if (cur !== d) return;
+      day = a; prev = b; dirty = {}; dirtyX = {};
+      buildGrid(); refresh(); setSaved(day.u ? '마지막 저장 ' + new Date(Date.parse(day.u) + 9 * 3600e3).toISOString().slice(11, 16) : '');
+    } catch (e) { setSaved('불러오기 안 됨 — 인터넷 확인 (' + e.message + ')', true); }
+  }
+  async function go(d) { if (!d || d > kstToday()) return; await flush(); load(d); }
+
+  // 엑셀 받기 (이 달) — 브라우저에서 바로 만듦
+  function loadJs(src) { return new Promise((ok, no) => { if (window.XLSX) return ok(); const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => no(new Error('엑셀 도구를 못 불러옴')); document.head.append(s); }); }
+  async function exportMonth() {
+    const b = $('xlsx'); b.disabled = true; const old = b.textContent; b.textContent = '만드는 중…';
+    try {
+      await flush();
+      await loadJs('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+      const ym = cur.slice(0, 7), last = [ym + '-01'];
+      let x = ym + '-01'; while (addDay(x, 1).slice(0, 7) === ym && addDay(x, 1) <= kstToday()) { x = addDay(x, 1); last.push(x); }
+      const days = {}; const want = [addDay(ym + '-01', -1), ...last];
+      for (let i = 0; i < want.length; i += 4) { const part = want.slice(i, i + 4); const got = await Promise.all(part.map(getDay)); part.forEach((k, j) => { days[k] = got[j]; }); }
+      const head = ['날짜', '요일', '반', '단위', '전날 24시', ...TIMES.map((t) => t + '시'), '교체·초기화', ...labels().map((l) => l + ' kWh'), ...(TIMES.length > 1 ? ['하루 kWh'] : [])];
+      const aoa = [head];
+      const keep = { day, prev };
+      for (const d of last) {
+        day = days[d]; prev = days[addDay(d, -1)] || blank();
+        for (const p of PAN) {
+          const n = (s) => { const v = num(s); return v == null || Number.isNaN(v) ? s : v; };
+          const cv = (v) => (v === 'x' ? '교체' : v === 'neg' ? '확인' : v);
+          aoa.push([d, DOW[new Date(utc(d)).getUTCDay()], p.name, p.unit, n(val(prev, p.id, '24')), ...TIMES.map((t) => n(val(day, p.id, t))), day.x[p.id] ? 'O' : '', ...segs(p).map(cv), ...(TIMES.length > 1 ? [cv(dayUse(p))] : [])]);
+        }
+      }
+      ({ day, prev } = keep);
+      const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!cols'] = head.map((h, i) => ({ wch: i === 2 ? 16 : 12 }));
+      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, ym);
+      XLSX.writeFile(wb, '수변전일지_' + ym + '.xlsx');
+    } catch (e) { setSaved('엑셀 못 만듦 (' + e.message + ')', true); }
+    b.disabled = false; b.textContent = old;
+  }
+
+  // 칸 다루기 : 방향키·Enter 이동, 엑셀에서 붙여넣기(여러 칸), 바꾸면 자동 저장
+  const grid = $('grid');
+  grid.addEventListener('input', (e) => { const inp = e.target; if (!inp.matches('td.cell input')) return; setVal(inp, inp.value); refresh(); schedule(); });
+  grid.addEventListener('change', (e) => {
+    const cb = e.target; if (!cb.matches('td.x input')) return;
+    const p = PAN[cb.dataset.p]; day.x[p.id] = cb.checked; dirtyX[p.id] = cb.checked; refresh(); schedule();
+  });
+  grid.addEventListener('keydown', (e) => {
+    const inp = e.target; if (!inp.matches('td.cell input') || e.isComposing) return;
+    const atStart = inp.selectionStart === 0 && inp.selectionEnd === 0, atEnd = inp.selectionStart === inp.value.length;
+    if (e.key === 'Enter') { e.preventDefault(); move(inp, e.shiftKey ? -1 : 1, 0); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); move(inp, 1, 0); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); move(inp, -1, 0); }
+    else if (e.key === 'ArrowLeft' && atStart) { e.preventDefault(); move(inp, 0, -1); }
+    else if (e.key === 'ArrowRight' && atEnd) { e.preventDefault(); move(inp, 0, 1); }
+  });
+  grid.addEventListener('focusin', (e) => { if (e.target.matches('td.cell input')) setTimeout(() => e.target.select(), 0); });
+  grid.addEventListener('paste', (e) => {
+    const inp = e.target; if (!inp.matches('td.cell input')) return;
+    const text = (e.clipboardData || window.clipboardData).getData('text') || '';
+    if (!/[\t\n]/.test(text.replace(/\r?\n$/, ''))) return;   // 한 칸짜리는 그냥 붙임
+    e.preventDefault();
+    const rows = text.replace(/\r/g, '').replace(/\n$/, '').split('\n').map((r) => r.split('\t'));
+    const p0 = Number(inp.dataset.p), t0 = Number(inp.dataset.t);
+    rows.forEach((r, i) => r.forEach((v, j) => { const c = inputAt(p0 + i, t0 + j); if (c) setVal(c, v); }));
+    refresh(); schedule();
+  });
+  $('prev').addEventListener('click', () => go(addDay(cur, -1)));
+  $('next').addEventListener('click', () => go(addDay(cur, 1)));
+  $('today').addEventListener('click', () => go(kstToday()));
+  $('date').addEventListener('change', () => go($('date').value));
+  $('xlsx').addEventListener('click', exportMonth);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
+  window.addEventListener('beforeunload', (e) => { if (timer || Object.keys(dirty).length) { save(); e.preventDefault(); e.returnValue = ''; } });
+  setInterval(() => { if (document.activeElement && document.activeElement.matches && document.activeElement.matches('td.cell input')) return; paint(); }, 60e3);   // 시각 지나면 노랑
+
+  $('app').hidden = false;
+  initKey().then(() => load(cur));
+})();
+</script>
+</body>
+</html>

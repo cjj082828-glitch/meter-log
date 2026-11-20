@@ -1,0 +1,1667 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content"><!-- 11/13 : 안드로이드 크롬에서 자판이 뜨면 화면이 줄어 대화창이 자판 위로 올라오게 -->
+<meta name="robots" content="noindex,nofollow">
+<title>운영센터 업무판</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>:root{color-scheme:dark}html,body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<style>
+/* 운영센터 업무판 : 차콜 바탕 + 하늘색 포인트 (사용자 10/29 색 시안 B — "너무 어둡다", "보라색도 별로", 칸 구분 위해 칸을 바탕보다 밝게), 상태는 표시등 색(초록 완료 · 주황 임박 · 빨강 중요).
+   넓은 화면 3열(할 일 · 일정 · 입력), 좁아지면 2열 → 1열 */
+:root{
+  --bg:#24282E; --surface:#3B424D; --sunken:#30363F; --ink:#F1F3F6; --ink-2:#CED3DA; --muted:#AEB5BF; --line:#535C69;
+  --accent:#5AB0FF; --accent-ink:#0A1726; --red:#F28A8A; --amber:#F2B95C; --green:#7DD3A0;
+  --font:"Pretendard Variable",Pretendard,"Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
+  --r-card:14px; --r-ctl:8px; color-scheme:dark;
+  --c1:#5AB0FF; --c2:#45CFB9; --c3:#F2B95C; --c4:#F28A8A; --c5:#A6D96A;   /* 자료 색 5가지 : 하늘·청록·주황·산호·연두 (장·카드마다 돌아가며) */
+  --up:#F28A8A; --down:#45CFB9; --bar0:#F2B95C; --bar1:#5AB0FF;   /* 늘어남·줄어듦, 막대 작년(주황)·올해(하늘) */
+}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;font-feature-settings:"tnum" 0}
+.wrap{max-width:1320px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:22px calc(100px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:20px}
+*,*::before,*::after{box-sizing:border-box}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* 머리 */
+.top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:14px 24px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+.eyebrow{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;letter-spacing:.02em;color:var(--muted)}
+.tag{font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;color:var(--amber);background:color-mix(in srgb,var(--amber) 13%,transparent)}
+h1{margin:2px 0 8px;font-size:clamp(26px,4.6vw,34px);line-height:1.2;font-weight:700;letter-spacing:-.02em;text-wrap:balance}
+h1 .w{color:var(--muted);font-weight:500}
+.meta{display:flex;flex-wrap:wrap;gap:8px}
+.meta>span{display:inline-flex;align-items:center;gap:7px;padding:4px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:13px;color:var(--ink-2)}
+.k{font-size:12px;font-weight:700;color:var(--muted)}
+.lamp{flex:none;width:8px;height:8px;border-radius:50%;background:var(--muted);box-shadow:0 0 0 3px color-mix(in srgb,var(--muted) 18%,transparent)}
+.lamp.g{background:var(--green);box-shadow:0 0 0 3px color-mix(in srgb,var(--green) 20%,transparent)}
+.lamp.r{background:var(--red);box-shadow:0 0 0 3px color-mix(in srgb,var(--red) 20%,transparent)}
+.lamp.a{background:var(--amber);box-shadow:0 0 0 3px color-mix(in srgb,var(--amber) 20%,transparent)}
+.top-r{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.progress{display:grid;grid-template-columns:auto auto;align-items:baseline;gap:6px 8px;min-width:150px}
+.progress .num{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.progress .lbl{font-size:12.5px;color:var(--muted)}
+.bar{grid-column:1/-1;height:6px;border-radius:999px;background:var(--sunken);overflow:hidden}
+.bar i{display:block;height:100%;width:0;border-radius:inherit;background:#FF5A5A;transition:width .3s ease}   /* 체크 게이지 = 오늘 업무 빨강 (사용자 11/2 "위에 체크란 게이지도") */
+.nav{display:flex;gap:6px}
+.btn{min-width:36px;height:36px;padding:0 14px;border:1px solid var(--line);border-radius:var(--r-ctl);background:var(--surface);font-size:14px;font-weight:600;cursor:pointer}
+.btn:hover:not(:disabled){border-color:color-mix(in srgb,var(--ink-2) 45%,var(--line))}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.solid{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.solid:hover:not(:disabled){filter:brightness(1.06)}
+
+/* 페이지 탭 : 오늘 업무 | 보고서 | 자료실 (사용자 10/29 "대시보드에 페이지 2개, 2페이지에 정리한 자료를 PPT처럼", 10/30 자료실 추가 · 자료 → 보고서) */
+.tabs{display:flex;align-items:center;gap:8px;flex-wrap:wrap;position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:var(--bg);padding-block:8px;margin-block:-8px}   /* 아래로 내려도 탭이 화면 위에 붙어 있게 (사용자 10/29 "스크롤 내려간 상태에서 전환하려면 다시 위까지 올려야 돼서 불편") */
+/* 앱에서 맨 위에서 아래로 당기면 새로고침 (운동 앱과 같은 방식, 사용자 10/29) */
+#ptr{position:fixed;top:0;left:0;right:0;height:0;overflow:hidden;display:flex;align-items:flex-end;justify-content:center;gap:8px;padding-bottom:10px;color:var(--muted);font-size:13px;font-weight:600;background:var(--bg);z-index:12;pointer-events:none}
+#ptrIcon{font-size:16px;transition:transform .2s}
+#ptr.ready #ptrIcon{transform:rotate(180deg)}
+#ptr.spin #ptrIcon{animation:ptrSpin .7s linear infinite}
+@keyframes ptrSpin{to{transform:rotate(360deg)}}
+.seg{display:inline-flex;gap:4px;padding:4px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.tab{height:34px;padding:0 14px;border:0;border-radius:9px;background:none;color:var(--ink-2);font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.tab[aria-selected="true"]{background:#FF5A5A;color:#1C0A0A}   /* 맨 위 탭(오늘 업무·보고서·자료실) 고른 것 = 오늘 업무 칸 빨강 (사용자 11/2 "맨 위 탭도 색 오늘 업무랑 같게") */
+.tab-n{font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--sunken);color:var(--ink-2)}
+.tab[aria-selected="true"] .tab-n{background:color-mix(in srgb,#1C0A0A 16%,transparent);color:#1C0A0A}
+.daynav{display:flex;align-items:center;gap:6px}   /* 지난 판 보기 (사용자 11/2 "그전 것도 보이게 하자") — 지난 날도 체크·메모 됨 (11/18) */
+.daynav select{height:34px;padding:0 8px;border:1px solid var(--line);border-radius:var(--r-ctl);background:var(--surface);color:var(--ink);font:inherit;font-size:13.5px}
+.daynav .btn{height:34px;padding:0 10px}
+body.past #dLabel{color:var(--amber);font-weight:700}
+.out{margin-left:auto;border:0;background:none;color:var(--muted);font-size:13px;cursor:pointer;padding:6px 4px}
+.out:hover{color:var(--ink)}
+body[data-tab="rep"] #state,body[data-tab="rep"] #board .grid,body[data-tab="rep"] .progress,body[data-tab="rep"] #foot{display:none!important}
+body:not([data-tab="rep"]) #repPage{display:none!important}
+body[data-tab="file"] #state,body[data-tab="file"] #board .grid,body[data-tab="file"] .progress,body[data-tab="file"] #foot{display:none!important}
+body:not([data-tab="file"]) #filePage{display:none!important}
+body[data-tab="log"] #state,body[data-tab="log"] #board .grid,body[data-tab="log"] .progress,body[data-tab="log"] #foot{display:none!important}
+body:not([data-tab="log"]) #logPage{display:none!important}
+.log-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.log-bar input[type=date]{height:34px;padding:0 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-weight:700;color-scheme:dark}
+.log-dow{font-weight:700}.log-ro{font-size:12.5px;color:var(--muted)}.log-sp{flex:1}
+.log-card{background:var(--sunken);border:1px solid var(--line);border-left:6px solid var(--k,var(--c1));border-radius:10px;padding:10px 12px;margin-bottom:12px}
+.log-card h3{margin:0 0 8px;font-size:15px;color:var(--k,var(--c1))}
+.log-scroll{overflow-x:auto}
+.log-t{border-collapse:collapse;width:100%;font-size:14px}
+.log-t th,.log-t td{border:1px solid var(--line);padding:5px 8px;white-space:nowrap}
+.log-t th{background:var(--surface);color:var(--ink-2);font-size:13px;font-weight:600}
+.log-t td.v{text-align:right;font-variant-numeric:tabular-nums}
+.log-t td.big{font-weight:800}.log-t td.up{color:#FF8A8A}.log-t td.dn{color:#7FC2FF}
+.log-t td.red{background:#6B2F35}.log-t td.yel{background:#5E5426}.log-t td.xo{color:var(--muted);text-align:center}
+.log-t tr.sum td{font-weight:700;background:#2A3A4E}
+.log-t td.it{position:sticky;left:0;background:var(--sunken)}.log-t tr.sum td.it{background:#2A3A4E}
+.log-note{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.5}
+.seg .tab{white-space:nowrap}
+@media (max-width:520px){.seg .tab{padding:0 9px;font-size:13px}}   /* 탭 4개(수변전일지 더함)가 폰 한 줄에 들어가게 */
+.rep-card:disabled{cursor:progress;opacity:.7}
+/* 자료실 : 보고서 카드와 달리 한 줄 목록, 여러 개 보낸 건 묶음 + '모두 받기' (사용자 10/30) */
+.file-list{display:flex;flex-direction:column;gap:8px;max-width:960px}
+/* TBM 회의록은 정기라 자료실 오른쪽 칸에 따로 (사용자 11/2 "TBM은 정기적이니까 오른쪽에 따로 만들자 칸을") — 폰에선 맨 위 */
+.file-cols{display:grid;gap:14px;align-items:start}
+.file-tbm{order:-1;border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+.file-tbm .file-row+.file-row{border-top:1px solid var(--line)}
+.file-tbm .rep-empty{border:0;padding:14px}
+@media (min-width:880px){.file-cols{grid-template-columns:minmax(0,1fr) 320px}.file-tbm{order:0}}
+.file-batch,.file-one{border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+.fb-h{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.fb-t{font-weight:700;color:var(--ink);min-width:0;overflow-wrap:anywhere}
+.fb-m{font-size:12.5px;color:var(--muted);margin-right:auto}
+.file-row{display:flex;align-items:center;gap:12px;padding:9px 14px;min-width:0}
+.file-batch .file-row+.file-row{border-top:1px solid var(--line)}
+.fr-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);font-weight:600}
+.fr-n small{font-weight:400;color:var(--muted);margin-left:8px}
+.fr-m{font-size:12.5px;color:var(--muted);white-space:nowrap}
+.fr-b{flex:none}
+/* 자료실 '보기' : 쪽 그림을 그 줄 아래에 펼침 (사용자 11/12 "자료실도 보고서처럼 보고 다운받게") */
+.file-view{display:flex;flex-direction:column;gap:6px;padding:10px 14px 12px;border-top:1px solid var(--line);background:var(--sunken)}
+.file-view .s-img{border-radius:6px;background:#fff}
+.file-view .s-pg{margin:0 0 6px}
+/* 11/13 : 보기 버튼 없이 줄을 누르면 펼침, 펼친 그림을 누르면 접힘 */
+.file-row.can-view{cursor:pointer;scroll-margin-top:76px}   /* 접고 그 줄로 돌아올 때 위 탭 막대에 안 가리게 */
+.file-row.can-view:hover,.file-row.can-view[aria-expanded="true"]{background:var(--sunken)}
+.file-row.can-view:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.file-view{cursor:pointer}
+.drop{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;background:color-mix(in srgb,var(--bg) 78%,transparent);pointer-events:none}
+.drop>div{padding:22px 28px;border:2px dashed var(--accent);border-radius:16px;background:var(--surface);color:var(--ink);font-size:16px;font-weight:700}
+
+/* 자료 : 목록 → 한 장씩 넘겨 보는 슬라이드 */
+/* 자료 칸 안은 흰 바탕 (사용자 10/29 "자료 쪽은 칸 안 배경은 흰색으로 하자") — 칸 안에서만 색 값을 밝은 화면용으로 바꿔 씀 */
+.slide,.rep-card{--surface:#FFFFFF;--bg:#FFFFFF;--sunken:#F3F5F8;--ink:#172131;--ink-2:#475366;--muted:#5F6A7D;--line:#D5DCE5;--c1:#1A64C4;--c2:#0A7466;--c3:#985A05;--c4:#B8323C;--c5:#357029;--up:#B8323C;--down:#0A7466;--bar0:#E3A740;--bar1:#1A64C4;color:var(--ink);color-scheme:light}   /* 흰 바탕 글씨 대비 4.5 이상 (사용자 "거기에 맞춰서 색도 시인성 좋게") */
+/* 보고서 카드 작게 (사용자 11/17 "네모칸이 너무크다 날짜 제목 장수 정도만 보이고 카드 크기를 좀 줄일까") : 날짜 · 장수 한 줄 + 제목 두 줄까지, 부제는 열었을 때만 */
+.rep-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.rep-card{display:flex;flex-direction:column;gap:4px;text-align:left;padding:10px 12px;border:1px solid var(--line);border-left:5px solid var(--k,var(--c1));border-radius:12px;background:var(--surface);cursor:pointer;min-width:0}
+.rep-card:hover{border-color:color-mix(in srgb,var(--accent) 55%,var(--line))}
+.rep-date{font-size:12px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.rep-t{font-size:14.5px;font-weight:700;line-height:1.35;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
+.rep-empty{margin:0;padding:18px;border:1px dashed var(--line);border-radius:var(--r-card);color:var(--ink-2);text-align:center}
+/* 보고서 탭 안 작은 탭(칩) (사용자 11/17 "정기보고서를 내리는게맞는거같은데", "저렇게 가로로 하는방법이 최선인가 뭔가 보기가좀") : 보고서(reg 없는 것) · 주간 · 월간 · 계절별 · 다른 reg, 고른 것만 보임 */
+.rep-chips{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px}
+.rep-chip{height:30px;padding:0 10px 0 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink-2);font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.rep-chip:hover{color:var(--ink)}
+.rep-chip[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.rep-chip-n{font-size:11px;font-weight:700;padding:0 6px;border-radius:999px;background:var(--sunken);color:var(--ink-2)}
+.rep-chip[aria-selected="true"] .rep-chip-n{background:color-mix(in srgb,var(--accent-ink) 16%,transparent);color:var(--accent-ink)}
+.deck{display:flex;flex-direction:column;gap:12px;max-width:1040px;width:100%;margin:0 auto}
+.deck-h{display:flex;align-items:center;gap:12px;min-width:0}
+.deck-t{font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.deck-n{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.btn.del{color:var(--red)}
+.btn.sm{height:30px;padding:0 12px;font-size:13px}
+#repSel{margin-left:auto}
+#repSel:not([hidden]) ~ .out{margin-left:0}
+body:not([data-tab="rep"]) #repSel,body:not([data-tab="rep"]) #repSelDel{display:none!important}
+.rep-item{position:relative;display:flex;min-width:0}
+.rep-item>.rep-card{flex:1;padding-right:64px}
+.rep-x{position:absolute;top:8px;right:8px;height:28px;padding:0 10px;border:1px solid #D5DCE5;border-radius:8px;background:#FFFFFF;color:#B8323C;font-size:12.5px;font-weight:700;cursor:pointer}
+.rep-x:hover{border-color:#B8323C}
+.rep-x.arm{background:#B8323C;border-color:#B8323C;color:#FFFFFF}
+.rep-item.sel-mode>.rep-card{padding-left:46px;padding-right:12px}
+.rep-ck{position:absolute;left:14px;top:12px;width:24px;height:24px;border:2px solid #5F6A7D;border-radius:6px;background:#FFFFFF;display:grid;place-items:center;font-size:14px;font-weight:800;color:#FFFFFF;pointer-events:none}
+.rep-item.on .rep-ck{background:#1A64C4;border-color:#1A64C4}
+.rep-item.on>.rep-card{outline:3px solid #1A64C4;outline-offset:-1px}
+.btn.del.arm{background:var(--red);border-color:var(--red);color:var(--accent-ink)}
+.slide{display:flex;flex-direction:column;gap:16px;padding:clamp(18px,3.4vw,40px);border:1px solid var(--line);border-top:5px solid var(--sc,var(--c1));border-radius:16px;background:var(--surface);min-height:340px;overflow:auto;touch-action:pan-y;user-select:none}
+.slide.k-title .s-title{font-size:clamp(24px,3.4vw,42px)}
+.slide.k-image{padding:0;gap:0;border-top:1px solid var(--line);background:#FFFFFF;aspect-ratio:auto;min-height:0;overflow:hidden}
+.s-img{display:block;width:100%;height:auto}
+.slide.k-image .s-pg{display:none}
+@media (min-width:880px){.slide{aspect-ratio:16/9;min-height:0}}
+.deck-nav{display:flex;align-items:center;justify-content:center;gap:12px}
+.tab[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.mode .tab{height:30px;padding:0 12px;font-size:13px}
+.slides{display:flex;flex-direction:column;gap:16px}
+#slides .slide,#slide{cursor:pointer}   /* 보고서 내용 누르면 목록으로 (11/13) */
+.s-pg{align-self:flex-end;margin-top:auto;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.dots{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.dot{width:9px;height:9px;border-radius:50%;border:0;padding:0;background:var(--line);cursor:pointer}
+.dot.on{background:var(--accent)}
+.s-kicker{align-self:flex-start;font-size:13px;font-weight:700;letter-spacing:.04em;padding:3px 10px;border-radius:999px;color:var(--sc);background:color-mix(in srgb,var(--sc) 12%,transparent)}
+.s-title{margin:0;font-size:clamp(20px,2.6vw,32px);font-weight:800;letter-spacing:-.02em;line-height:1.25;text-wrap:balance}
+.s-sub{font-size:clamp(14px,1.4vw,17px);color:var(--ink-2)}
+.s-big{margin-top:auto;font-size:clamp(40px,7vw,84px);font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:var(--sc)}
+h3.s-title{padding-left:12px;border-left:4px solid var(--sc)}
+.s-note{margin-top:auto;font-size:12.5px;color:var(--muted)}
+.s-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.s-stat{padding:14px 16px;border-radius:12px;background:color-mix(in srgb,var(--k) 10%,var(--bg));border:1px solid color-mix(in srgb,var(--k) 35%,var(--line));border-top:4px solid var(--k);display:flex;flex-direction:column;gap:4px;min-width:0}
+.s-stat .k{font-size:12.5px;color:var(--ink-2)}
+.s-stat .v{font-size:clamp(22px,2.6vw,32px);font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--k)}
+.s-stat .u{font-size:13px;font-weight:600;color:var(--ink-2);margin-left:4px}
+.s-stat .d{font-size:12.5px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.up{color:var(--up)!important;font-weight:700}.down{color:var(--down)!important;font-weight:700}   /* 늘어남 = 산호, 줄어듦 = 청록 */
+.s-legend{display:flex;gap:16px;font-size:12.5px;color:var(--ink-2)}
+.s-legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px;background:var(--bar0)}
+.s-legend span.b::before{background:var(--bar1)}
+.s-bars{display:flex;flex-direction:column;gap:12px}
+.s-group{display:grid;grid-template-columns:minmax(84px,150px) minmax(0,1fr);gap:4px 12px;align-items:center}
+.s-group .g{font-size:13.5px;font-weight:600;color:var(--ink-2);grid-row:span 2}
+.s-bar{display:flex;align-items:center;gap:8px;min-width:0}
+.s-bar i{flex:none;display:block;height:16px;border-radius:4px;background:var(--bar0)}
+.s-bar.b i{background:var(--bar1)}
+.s-bar span{font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--ink-2);white-space:nowrap}
+.s-tw{overflow-x:auto}
+.s-table{width:100%;border-collapse:collapse;font-size:clamp(13px,1.3vw,15px)}
+.s-table th,.s-table td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.s-table th:first-child,.s-table td:first-child{text-align:left}
+.s-table th{font-size:12.5px;color:var(--ink);font-weight:700;background:color-mix(in srgb,var(--sc) 22%,transparent)}
+.s-table tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--ink) 4%,transparent)}
+.s-list{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:10px;font-size:clamp(14px,1.5vw,18px);line-height:1.5}
+.s-list li::marker{color:var(--sc);font-size:1.2em}
+
+/* 로그인 (사용자 10/29 "로그인해야 되게, 아이디 비밀번호" → "자동 로그인 말고 아이디 저장만") */
+.auth{max-width:380px;width:100%;margin:6vh auto 0;padding:26px 24px;border:1px solid var(--line);border-radius:var(--r-card);background:var(--surface);display:flex;flex-direction:column;gap:14px}
+.auth h2{margin:0;font-size:20px;font-weight:700}
+.auth p{margin:0;font-size:13.5px;color:var(--ink-2)}
+.auth label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:var(--ink-2)}
+.auth input[type=text],.auth input[type=password]{height:42px;padding:0 12px;border:1px solid var(--line);border-radius:var(--r-ctl);background:var(--sunken);font-size:15px}
+.auth .keep{flex-direction:row;align-items:center;gap:8px;font-weight:500}
+.auth .keep input{width:18px;height:18px;margin:0;accent-color:var(--accent)}
+.auth .err{color:var(--red);font-size:13px;min-height:1.2em}
+.auth .btn{height:42px}
+
+/* 카드 */
+.grid{display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"today" "tasks" "sched";gap:20px;align-items:start}
+.c-today{grid-area:today}.c-tasks{grid-area:tasks}.c-sched{grid-area:sched}
+@media (min-width:880px){.grid{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);grid-template-areas:"today today" "tasks sched"}}   /* 두 칸 + 오늘 업무는 두 칸 너비 (사용자 10/29) */
+@media (min-width:880px){#todayList{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:32px}#todayList .item:nth-last-child(2):nth-child(odd){border-bottom:0}}
+.sec-today .plate{font-size:16.5px}
+.sec-today .t{font-size:16px}
+.col{display:flex;flex-direction:column;gap:20px;min-width:0}
+/* 1페이지 칸 : 차콜 칸을 한 단계 어둡게 (사용자 10/29 흰 칸·밝은색 칸 시안 본 뒤 "기존 칸에서 밝기 좀만 줄여봐" → A2) — 구분은 테두리·그림자 */
+.sec{--surface:#31363F;--sunken:#292E36}
+.sec{display:flex;flex-direction:column;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:16px 18px 8px;box-shadow:0 2px 10px color-mix(in srgb,#000 28%,transparent)}
+.sec-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.plate{margin:0;font-size:15px;font-weight:700;letter-spacing:-.01em;color:var(--ink)}
+.aside{font-size:12.5px;color:var(--muted);display:inline-flex;align-items:center;gap:7px;text-align:right}
+
+
+/* 할 일 */
+.list{list-style:none;margin:0;padding:0}
+.item{border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:0}
+/* 한 공사 묶음 : 공사명 크게 + 아래 체크 줄 (사용자 11/4 "한 공사 건에 대한 내용이니까 공사명 크게 적고 아래 체크 행을 만드는 게 맞아 보여") */
+.grp{border-bottom:1px solid var(--line);padding:12px 0 4px}
+.grp:last-child{border-bottom:0}
+.grp-t{font-size:16px;font-weight:700;color:var(--ink);overflow-wrap:anywhere}
+.grp-t .chip{vertical-align:1px}
+.grp-n{margin-top:2px}
+.grp ul{list-style:none;margin:4px 0 0;padding:0 0 0 14px;border-left:2px solid var(--line)}
+.grp .item{border-bottom:1px dashed var(--line)}
+.grp .item:last-child{border-bottom:0}
+.grp .row{padding:9px 0}
+.row{display:flex;gap:12px;align-items:flex-start;padding:12px 0}
+.row input[type=checkbox]{appearance:none;-webkit-appearance:none;flex:none;width:20px;height:20px;margin:2px 0 0;border:1.5px solid color-mix(in srgb,var(--ink-2) 55%,var(--line));border-radius:6px;background-color:var(--surface);cursor:pointer}
+.row input[type=checkbox]:checked{border-color:var(--accent);background:var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5 10.5l3.2 3.2L15 6.8' fill='none' stroke='%23101318' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/17px no-repeat}
+.row input[type=checkbox]:disabled{cursor:default;opacity:.6}
+.sec.kk .row input[type=checkbox]:checked{border-color:var(--k);background-color:var(--k)}   /* 체크 색 = 그 칸 띠 색 (사용자 11/2 "체크 색도 그 칸에 맞게끔") — 불이행(빨강)은 아래 .jd.ng 가 이김 */
+.body{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.t{font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+.n{font-size:13.5px;color:var(--ink-2);overflow-wrap:anywhere}
+/* 항목 밑 메모는 ' · '마다 줄 나눔 (사용자 11/2 "업무 밑에 너가 적어 놓은 메모 잘 안 읽게 되는데") + **중요한 것**만 밝고 굵게 ("꼭 첫 줄만 굵게 말고 중요한 것들은 굵게") */
+.n.nlist{display:flex;flex-direction:column;gap:2px;font-size:14px;line-height:1.45;margin-top:2px}
+.n .nl{position:relative;padding-left:12px}
+.n .nl::before{content:'';position:absolute;left:2px;top:.62em;width:4px;height:4px;border-radius:50%;background:var(--muted)}
+.n b{color:var(--ink);font-weight:700}
+.item.done .t{color:var(--muted);text-decoration:line-through;text-decoration-thickness:1px}
+.item.done .n{color:var(--muted)}
+.chip{display:inline-block;font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;vertical-align:2px;margin-left:4px;text-decoration:none}
+.chip.hi{color:var(--amber);background:color-mix(in srgb,var(--amber) 14%,transparent)}
+.chip.must{color:var(--red);background:color-mix(in srgb,var(--red) 16%,transparent)}
+.dchip{display:inline-block;font-size:11.5px;font-weight:700;padding:1px 8px;margin-right:6px;border-radius:999px;background:var(--sunken);color:var(--ink-2);vertical-align:1px;font-variant-numeric:tabular-nums}
+.chip.reg{color:var(--ink-2);background:var(--sunken);border:1px solid var(--line)}
+/* 협력사 업무지시 : 이행 / 불이행 둘 중 하나 (사용자 10/29) */
+.judge{display:flex;flex-direction:column;gap:7px;flex:none;padding-top:1px}
+.jd{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ink-2);cursor:pointer;white-space:nowrap}
+.row .jd input[type=checkbox]{margin:0}
+.row .jd.ng input[type=checkbox]:checked{border-color:var(--red);background-color:var(--red)}
+.item.ok .t{color:var(--muted);text-decoration:line-through;text-decoration-thickness:1px}
+.item.ng .jd.ng{color:var(--red)}
+
+.memo-in{width:100%;height:32px;margin-top:4px;padding:0 10px;border:1px solid transparent;border-radius:var(--r-ctl);background:var(--sunken);font-size:13.5px;color:var(--ink)}
+.memo-in:hover{border-color:var(--line)}
+.memo-in:focus{border-color:var(--accent);background:var(--surface);outline:none}
+.cl{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px;font-size:13px;color:var(--ink-2)}
+.memo-k{font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.empty{list-style:none;padding:10px 0 12px;color:var(--muted);font-size:14px}
+
+/* 일정 */
+.timeline{list-style:none;margin:0;padding:0}
+.ev{display:grid;grid-template-columns:100px minmax(0,1fr);gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+.ev:last-child{border-bottom:0}
+.when{display:flex;flex-direction:column;align-items:flex-start;gap:5px;font-variant-numeric:tabular-nums}
+.when .d{font-size:13.5px;font-weight:700}
+.dday{font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--sunken);color:var(--ink-2)}
+.dday.soon{color:var(--amber);background:color-mix(in srgb,var(--amber) 13%,transparent)}
+#ongoing .dday{color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.ev.hi .dday{color:var(--amber);background:color-mix(in srgb,var(--amber) 14%,transparent)}
+/* 정기 업무는 다가오는 일정과 칸을 나눔 (사용자 11/2 "일정이랑 정기업무 구분이 안 된다" → "구분이 너무 약해") — 청록 띠·제목·날짜표 + 더 어두운 칸 + 점선 테두리 */
+/* 칸마다 색 띠·제목 (사용자 11/2 "같은 묶음은 같은 색" → "협력사 업무지시를 해야 될 업무 위로, 그 두 개는 다른 색, 오늘 업무는 제일 중요하게") — 오늘·이번 주 하늘 · 협력사 분홍 · 해야 될 연두 · 일정 주황 · 정기 청록 · 회의·내일 TBM 회청 */
+.sec.kk{--surface:#282D34;--sunken:#1F2328;border:1px solid color-mix(in srgb,var(--k) 45%,var(--line));border-left:6px solid var(--k)}   /* 칸 바탕 전부 정기 업무처럼 어둡게 (사용자 11/2 "정기 업무 어둡기 다 적용해서") — 메모 칸은 더 어둡게 */
+.sec.kk .plate{color:var(--k)}
+.sec.sec-today.kk{border-width:2px;border-left-width:10px;box-shadow:0 0 0 1px color-mix(in srgb,var(--k) 25%,transparent),0 4px 18px color-mix(in srgb,#000 35%,transparent)}   /* 오늘 업무가 제일 먼저 눈에 (굵은 띠·두꺼운 테두리·큰 제목, 바탕은 다른 칸과 같게 — 사용자 11/2 "바탕은 원래대로") */
+.sec.sec-today .sec-h .plate{font-size:19px}
+/* 진행 중 일정은 오늘 업무 칸 안 오른쪽 (사용자 11/2 "오늘 업무 칸 안에 진행 중 일정 칸 넣는 식으로, 오른쪽에") — 좁으면 아래, 없으면 안 보임 */
+.today-in{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+.today-ongoing{border-top:1px solid var(--line);padding-top:12px}
+.today-ongoing .plate.sub{font-size:15px;margin:0 0 4px}
+@media (min-width:880px){.today-in{grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:28px}.today-in.solo{grid-template-columns:minmax(0,1fr)}.today-ongoing{border-top:0;padding-top:0;border-left:1px solid var(--line);padding-left:24px}}
+.sec-reg .dday,.sec-reg .ev.hi .dday{color:var(--c2);background:color-mix(in srgb,var(--c2) 15%,transparent)}
+.sec-reg .when .d{color:var(--c2)}
+.sec-reg .what .t{color:var(--ink-2);font-weight:500}
+.sub{font-size:12.5px;font-weight:700;letter-spacing:.02em;color:var(--muted);margin:14px 0 0}
+.sec-h+.sub{margin-top:0}
+.what{display:flex;flex-direction:column;gap:3px;min-width:0}
+.what .t{cursor:default}
+
+/* 회의 때 말할 것 */
+.say{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-direction:column;gap:8px}
+.say li{padding:10px 12px;background:var(--sunken);border-radius:10px;font-size:14px;overflow-wrap:anywhere}
+.say li.empty{background:none;padding:10px 0 2px}
+
+
+/* 입력 */
+.inputs{gap:20px}
+.field input[type=text],textarea,select,.fill{min-width:0;height:38px;padding:0 11px;border:1px solid var(--line);border-radius:var(--r-ctl);background:var(--surface)}
+input:focus,textarea:focus,select:focus{border-color:var(--accent);outline:none}
+.fill{width:100%}
+.inputs input[type=date]{height:34px;padding:0 8px;border:1px solid var(--line);border-radius:var(--r-ctl);background:var(--surface)}
+textarea{height:auto;min-height:64px;padding:9px 11px;resize:vertical;width:100%;line-height:1.5}
+input::placeholder,textarea::placeholder{color:var(--muted)}
+.inlist{list-style:none;margin:10px 0 0;padding:0}
+.inform{display:flex;flex-direction:column;gap:8px}
+.inform .opts{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;font-size:14px;color:var(--ink-2)}
+.inform .opts label{display:inline-flex;align-items:center;gap:6px}
+.in-row{padding:10px 0;border-bottom:1px solid var(--line);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 8px}
+.in-row:last-child{border-bottom:0}
+.in-top{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.in-date{font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums}
+.st{font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px}
+.st.new{color:var(--amber);background:color-mix(in srgb,var(--amber) 13%,transparent)}
+.st.ok{color:var(--green);background:color-mix(in srgb,var(--green) 13%,transparent)}
+.in-text{grid-column:1;overflow-wrap:anywhere}
+.in-note{grid-column:1;font-size:13px;color:var(--muted)}
+.in-row.is-done .in-text{color:var(--ink-2)}
+.pp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.pp{display:flex;flex-direction:column;gap:4px}
+.pp label{font-size:13px;font-weight:600;color:var(--ink-2)}
+.pp select{width:100%}
+.tbm-form{display:flex;flex-direction:column;gap:12px;padding-bottom:10px}
+.tbm-form .lbl2{font-size:13px;font-weight:600;color:var(--ink-2);display:block;margin-bottom:4px}
+.tbm-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.saved{font-size:13px;color:var(--muted)}
+.saved.dirty{color:var(--amber);font-weight:600}
+.x{border:0;background:none;color:var(--muted);font-size:18px;line-height:1;padding:0 4px;cursor:pointer}
+.x:hover{color:var(--red)}
+
+/* 대화 */
+/* 대화 : 화면 아래에 늘 붙은 입력줄, 누르면 위로 대화 기록이 펼쳐짐 (사용자 10/28) */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:15;padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));background:color-mix(in srgb,var(--bg) 86%,transparent);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-top:1px solid var(--line)}
+.dock-in{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+.dock-panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 12px 10px;box-shadow:0 -10px 30px color-mix(in srgb,#000 45%,transparent)}
+.dock-h{display:flex;align-items:center;gap:10px;margin:0 2px 8px}
+.dock-h .aside{margin-left:auto}
+.dock .msgs{display:flex;flex-direction:column;gap:8px;min-height:120px;max-height:min(52vh,440px);overflow-y:auto;padding:10px;border-radius:10px;background:var(--sunken)}
+.dock-new{align-self:center;flex:none;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;color:var(--accent-ink);background:var(--accent)}
+.msg{max-width:86%;padding:8px 12px;border-radius:14px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14.5px;line-height:1.5}
+.msg.me{align-self:flex-end;background:var(--accent);color:var(--accent-ink);border-bottom-right-radius:4px}
+.msg.claude{align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-bottom-left-radius:4px}
+.msg.sys{align-self:center;max-width:100%;padding:0 4px;color:var(--muted);font-size:12.5px;text-align:center}
+.msg .at{display:block;margin-top:3px;font-size:11px;font-variant-numeric:tabular-nums;opacity:.65}
+.msg .cp{margin-left:8px;padding:1px 8px;border:1px solid var(--line);border-radius:999px;background:transparent;color:inherit;font:inherit;font-size:11px;cursor:pointer}
+.typing{align-self:flex-start;font-size:13px;color:var(--muted)}
+.daysep{align-self:center;margin:8px 0 2px;padding:1px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.chat-form{display:flex;gap:8px;align-items:flex-end}
+/* 붙인 사진·파일은 바로 안 보내고 여기 대기 → '등록' 때 글이랑 같이 (사용자 11/2 "사진 붙여 넣기 하면 바로 전송되는 거 아니라 채팅하고 같이 보낼 수 있게") */
+.att-tray{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.att-chip{display:flex;align-items:center;gap:8px;max-width:240px;padding:4px 6px 4px 4px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-size:12.5px;color:var(--ink-2)}
+.att-chip img{width:44px;height:44px;object-fit:cover;border-radius:7px;flex:none}
+.att-chip .ac-n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-left:4px}
+.att-chip button{flex:none;width:24px;height:24px;border:0;border-radius:50%;background:var(--sunken);color:var(--ink);font-size:15px;line-height:1;cursor:pointer}
+.chat-form .lamp{align-self:center;margin:0 4px}
+.chat-form textarea{flex:1;height:42px;min-height:42px;max-height:140px;resize:none;overflow-y:hidden;padding:10px 12px;border-radius:12px;background:var(--surface)}
+/* 사진 붙이기 (사용자 10/29) */
+.att-btn{flex:none;height:42px;padding:0 12px}
+.msg .att{display:block;max-width:220px;max-height:220px;min-width:60px;min-height:60px;margin:2px 0 4px;border-radius:10px;background:var(--sunken);cursor:zoom-in}
+.msg .att.big{max-width:100%;max-height:none;cursor:zoom-out}
+.att-file{display:flex;flex-direction:column;gap:1px;max-width:260px;min-width:0;margin:2px 0 4px;padding:8px 11px;border:1px solid color-mix(in srgb,currentColor 32%,transparent);border-radius:10px;background:color-mix(in srgb,currentColor 9%,transparent);color:inherit;font:inherit;text-align:left;cursor:pointer}
+.att-file:disabled{cursor:progress;opacity:.7}
+.af-n{font-size:13.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.af-s{font-size:12px;opacity:.78}
+
+.state{margin:24px 0;padding:18px;border:1px dashed var(--line);border-radius:var(--r-card);color:var(--ink-2);text-align:center;background:var(--surface)}
+.foot{font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(88px + env(safe-area-inset-bottom,0px));max-width:calc(100% - 32px);padding:10px 16px;border-radius:10px;background:var(--ink);color:var(--bg);font-size:14px;z-index:20}
+@media (prefers-reduced-motion: reduce){.bar i{transition:none}}
+</style>
+</head>
+<body>
+
+<div id="ptr" aria-hidden="true"><span id="ptrIcon">↓</span><span id="ptrText">당겨서 새로고침</span></div>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow"><span id="dYear">—</span><span id="dLabel">오늘 업무</span></div>
+      <h1 id="dTitle">업무판</h1>
+      <div class="meta" id="meta"></div>
+    </div>
+    <div class="top-r">
+      <div class="daynav" id="dayNav" hidden><button class="btn" id="toToday" type="button">오늘</button><button class="btn" id="prevDay" type="button" aria-label="전날 판">‹</button><select id="daySel" aria-label="판 날짜"></select><button class="btn" id="nextDay" type="button" aria-label="다음 날 판">›</button></div>
+      <div class="progress" id="progress" hidden>
+        <span class="num" id="progNum">0 / 0</span><span class="lbl">체크</span>
+        <div class="bar"><i id="progBar"></i></div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs" hidden>
+    <div class="seg" role="tablist" aria-label="페이지"><button class="tab" role="tab" id="tabDay" type="button" aria-selected="true">오늘 업무</button><button class="tab" role="tab" id="tabRep" type="button" aria-selected="false">보고서<span class="tab-n" id="repCount" hidden></span></button><button class="tab" role="tab" id="tabFile" type="button" aria-selected="false">자료실<span class="tab-n" id="fileCount" hidden></span></button><button class="tab" role="tab" id="tabLog" type="button" aria-selected="false">수변전일지</button></div>
+    <button class="btn sm" id="repSel" type="button" hidden>선택 삭제</button><button class="btn sm del" id="repSelDel" type="button" hidden disabled>골라 줘</button>
+    <button class="out" id="logout" type="button">로그아웃</button>
+  </nav>
+
+  <form class="auth" id="auth" hidden>
+    <h2 id="authTitle">로그인</h2>
+    <label>아이디<input type="text" id="authId" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="40"></label>
+    <label>비밀번호<input type="password" id="authPw" autocomplete="current-password" maxlength="100"></label>
+    <label class="keep"><input type="checkbox" id="authKeep">아이디 저장</label>
+    <div class="err" id="authErr" role="alert"></div>
+    <button class="btn solid" type="submit" id="authGo">로그인</button>
+  </form>
+
+  <p class="state" id="state">업무판을 불러오는 중…</p>
+
+  <section class="reports" id="repPage">
+    <div class="rep-list" id="repList"></div>
+    <div class="deck" id="deck" hidden>
+      <div class="deck-h"><button class="btn" id="deckBack" type="button">‹ 목록</button><div class="deck-t" id="deckTitle"></div><span class="deck-n" id="deckNum"></span><div class="seg mode" role="group" aria-label="보는 방식"><button class="tab" id="modeScroll" type="button" aria-pressed="true">쭉 보기</button><button class="tab" id="modeOne" type="button" aria-pressed="false">한 장씩</button></div><button class="btn" id="deckPdf" type="button" title="이 보고서를 PDF로 내려받기">PDF</button><button class="btn" id="deckPpt" type="button" title="PPT 원본 받기" hidden>PPT</button><button class="btn del" id="deckDel" type="button" title="이 보고서 지우기 (한 번 더 눌러야 지워짐)">삭제</button></div>
+      <div class="slides" id="slides"></div>
+      <div class="slide" id="slide" hidden></div>
+      <div class="deck-nav" id="deckNav" hidden><button class="btn" id="prevSlide" type="button" aria-label="이전 장">‹</button><div class="dots" id="dots"></div><button class="btn" id="nextSlide" type="button" aria-label="다음 장">›</button></div>
+    </div>
+  </section>
+
+  <section class="reports" id="filePage">
+    <div class="file-cols">
+      <div class="file-list" id="fileList"></div>
+      <aside class="file-tbm"><div class="fb-h"><span class="fb-t">TBM 회의록</span><span class="fb-m">매일 아침 올라옴</span></div><div id="tbmFiles"></div></aside>
+    </div>
+  </section>
+
+  <section class="reports" id="logPage">
+    <div class="log-bar"><button class="btn" id="logPrev" type="button" aria-label="전날">‹</button><input type="date" id="logDate"><span class="log-dow" id="logDow"></span><button class="btn" id="logNext" type="button" aria-label="다음 날">›</button><button class="btn" id="logToday" type="button">오늘</button><span class="log-ro" id="logRo">읽기만</span><span class="log-sp"></span><button class="btn" id="logXd" type="button">엑셀 받기 (이 날)</button><button class="btn" id="logXm" type="button">엑셀 받기 (이 달)</button></div>
+    <div id="logBody"></div>
+  </section>
+
+  <div id="board" hidden>
+    <div class="grid">
+      <div class="col c-today">
+        <section class="sec sec-today kk" style="--k:#FF5A5A"><div class="sec-h"><h2 class="plate">오늘 업무</h2></div><div class="today-in" id="todayIn"><ul class="list tasks" id="todayList"></ul><div class="today-ongoing" id="todayOngoing"><h3 class="plate sub">진행 중 일정</h3><ol class="timeline" id="ongoing"></ol></div></div></section>
+      </div>
+
+      <div class="col c-tasks">
+        <section class="sec kk" style="--k:#5AB0FF"><div class="sec-h"><h2 class="plate">이번 주 예정 업무</h2></div><ul class="list tasks" id="weekList"></ul></section>
+        <section class="sec kk" style="--k:#EC9AC0"><div class="sec-h"><h2 class="plate">협력사 업무지시</h2></div><ul class="list tasks" id="orders"></ul></section>
+        <section class="sec kk" style="--k:#A6D96A"><div class="sec-h"><h2 class="plate">해야 될 업무</h2></div><ul class="list tasks" id="waiting"></ul></section>
+      </div>
+
+      <div class="col inputs c-sched">
+        <section class="sec kk" style="--k:#F2B95C"><div class="sec-h"><h2 class="plate">다가오는 일정</h2></div><ol class="timeline" id="upcoming"></ol></section>
+        <section class="sec sec-reg kk" style="--k:var(--c2)"><div class="sec-h"><h2 class="plate">정기 업무</h2><span class="aside k">매달·매주 반복</span></div><ol class="timeline" id="upRegular"></ol></section>
+        <section class="sec kk" style="--k:#9FB3C8"><div class="sec-h"><h2 class="plate">회의 때 말할 것</h2></div><ul class="say" id="meeting"></ul></section>
+        <section class="sec kk" style="--k:#9FB3C8">
+          <div class="sec-h"><h2 class="plate">내일 TBM</h2><span class="aside"><label for="tbmDate" class="k">날짜</label><input type="date" id="tbmDate"></span></div>
+          <form class="tbm-form" id="tbmForm" autocomplete="off">
+            <div class="pp-grid" id="tbmPeople"></div>
+            <div><label class="lbl2" for="tbmWork">작업</label><textarea id="tbmWork" maxlength="500" placeholder="예: 분전반 점검, 발전기 무부하 운전, 공사 입회"></textarea></div>
+            <div><label class="lbl2" for="tbmVendors">출입 업체</label><input class="fill" type="text" id="tbmVendors" maxlength="200" placeholder="예: 조경, 방역, 승강기 점검"></div>
+            <div class="tbm-foot"><span class="saved" id="tbmSaved">아직 저장 안 함</span><button class="btn solid" type="submit">저장</button></div>
+          </form>
+        </section>
+      </div>
+    </div>
+
+    <div class="drop" id="drop" hidden><div>놓으면 메모에 첨부</div></div>
+    <div class="dock" id="dock">
+      <div class="dock-in">
+        <div class="dock-panel" id="dockPanel" hidden>
+          <div class="dock-h"><h2 class="plate">메모</h2><span class="aside" id="chatState"><span class="lamp"></span><span>연결 확인 중</span></span><button class="x" id="dockClose" type="button" aria-label="접기">×</button></div>
+          <div class="msgs" id="msgs" aria-live="polite"></div>
+        </div>
+        <div class="att-tray" id="attTray" hidden></div>
+        <form class="chat-form" id="chatForm" autocomplete="off">
+          <span class="lamp" id="dockLamp"></span>
+          <textarea id="chatText" rows="1" maxlength="2000" placeholder="메모" aria-label="메모"></textarea>
+          <span class="dock-new" id="dockNew" hidden>새 글</span>
+          <button class="btn att-btn" type="button" id="attBtn" aria-label="사진·파일 붙이기">첨부</button><input type="file" id="chatImg" hidden>
+          <button class="btn solid" type="submit">등록</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <footer class="foot" id="foot" hidden></footer>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script>
+(() => {
+  // 운동 앱과 같은 파이어베이스, 운동 앱 컬렉션(ppld) 안 'bd_해시_' 문서만 씀 — 내용은 주소 # 뒤 비밀키로 암호화 (board.py 와 같은 방식)
+  const FB = {"apiKey": "AIzaSyD-D7JrKxQybk1ts3UPUEM-DY9S0v9Py-w", "authDomain": "automatic-becf5.firebaseapp.com", "projectId": "automatic-becf5", "storageBucket": "automatic-becf5.firebasestorage.app", "messagingSenderId": "610761387610", "appId": "1:610761387610:web:836eae72f3fec1eb09f263"};
+  const $ = (id) => document.getElementById(id);
+  const DOW = ['일', '월', '화', '수', '목', '금', '토'];
+  const PEOPLE = ['센터장', '강파트너', '조파트너', '박파트너'];
+  const STATUS = ['출근', '휴가', '오전 늦게', '출장', '교육', '기타'];
+  const kstNow = () => new Date(Date.now() + 9 * 3600e3);
+  const kstToday = () => kstNow().toISOString().slice(0, 10);
+  const isDate = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
+  const utc = (s) => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d); };
+  const isoDay = (t) => new Date(t).toISOString().slice(0, 10);
+  const dow = (s) => DOW[new Date(utc(s)).getUTCDay()];
+  const md = (s) => { const [, m, d] = s.split('-').map(Number); return m + '/' + d; };
+  const nextWorkday = (s) => { let t = utc(s) + 864e5; while ([0, 6].includes(new Date(t).getUTCDay())) t += 864e5; return isoDay(t); };
+  const stamp = (s) => { const t = Date.parse(s); if (!t) return ''; const d = new Date(t + 9 * 3600e3); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + ' ' + d.toISOString().slice(11, 16); };
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const uid = () => 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const arr = (v) => (Array.isArray(v) ? v : []);
+  const marked = (box, t) => { String(t).split(/\*\*(.+?)\*\*/).forEach((x, i) => { if (x) box.append(i % 2 ? el('b', null, x) : document.createTextNode(x)); }); return box; };   // **글자** → 굵게
+  const noteEl = (s) => {   // 메모 ' · ' 구분 → 한 줄씩
+    const parts = String(s).split(' · ').map((x) => x.trim()).filter(Boolean), d = el('div', 'n');
+    d.classList.add('nlist'); parts.forEach((x) => d.append(marked(el('span', 'nl'), x))); return d;   // 한 줄이어도 앞에 점 (사용자 11/2 "줄 한 개여도 동일하게 해줘 앞에 점 같은 거 넣고")
+  };
+  const nowIso = () => new Date().toISOString();
+
+  // 로그인 (사용자 10/29 "로그인해야 되게, 아이디 비밀번호", "자동 로그인 말고 아이디 저장만") : 로그인은 그 창(세션) 동안만, '아이디 저장'이면 아이디만 기억. 비밀키는 아이디·비밀번호로 잠근 봉투 문서(bd_login_<아이디 해시>)에서 꺼냄.
+  // 아이디 등록은 판에서 못 함 — 사용자가 PC에서 board.py set-login 으로만 ("아무나 생성하니까 나만 여기서 등록하는 게 맞아"). 주소 # 뒤 키는 안 씀
+  let SECRET = '';
+  if (location.hash) history.replaceState(null, '', location.pathname + location.search);   // 예전 주소의 키가 주소창에 안 남게
+  try { localStorage.removeItem('mb_secret'); localStorage.removeItem('mb_auth'); SECRET = sessionStorage.getItem('mb_auth') || ''; } catch (e) {}
+
+  // 암호화 : PBKDF2-SHA256 15만 회 → AES-GCM, 저장값 = base64(iv 12바이트 + 암호문)
+  let KEY = null, PFX = '', fs = null, auth = null;
+  const te = new TextEncoder(), td = new TextDecoder();
+  const toB64 = (u8) => { let s = ''; for (let i = 0; i < u8.length; i += 8192) s += String.fromCharCode.apply(null, u8.subarray(i, i + 8192)); return btoa(s); };
+  const fromB64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+  const hex = (u8) => Array.from(u8, (b) => b.toString(16).padStart(2, '0')).join('');
+  async function keysOf(secret) {
+    const pfx = 'bd_' + hex(new Uint8Array(await crypto.subtle.digest('SHA-256', te.encode(secret)))).slice(0, 16) + '_';
+    const base = await crypto.subtle.importKey('raw', te.encode(secret), 'PBKDF2', false, ['deriveKey']);
+    const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: te.encode('meritz-board-v1'), iterations: 150000, hash: 'SHA-256' },
+      base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+    return { pfx, key };
+  }
+  async function initCrypto() { ({ pfx: PFX, key: KEY } = await keysOf(SECRET)); }
+  async function encWith(key, obj) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, te.encode(JSON.stringify(obj))));
+    const out = new Uint8Array(12 + ct.length); out.set(iv); out.set(ct, 12);
+    return toB64(out);
+  }
+  async function enc(obj) { return encWith(KEY, obj); }
+  async function dec(s) {
+    try { const u = fromB64(s); return JSON.parse(td.decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: u.subarray(0, 12) }, KEY, u.subarray(12)))); }
+    catch (e) { return undefined; }
+  }
+  const ref = (name) => fs.collection('ppld').doc(PFX + name);
+  function sub(name, cb) {
+    let seq = 0;
+    return ref(name).onSnapshot(async (s) => {
+      const my = ++seq; const d = s.exists ? s.data() : null;
+      const v = d && typeof d.v === 'string' ? await dec(d.v) : null;
+      if (my === seq) cb(v, !!d);
+    }, (e) => { if (e && e.code === 'permission-denied') return logout(); cb(null, false); });   // 파이어베이스 로그인이 풀렸으면 다시 로그인
+  }
+  function subList(name, cb) {
+    let seq = 0;
+    return ref(name).onSnapshot(async (s) => {
+      const my = ++seq; const d = s.exists ? s.data() : null; const out = [];
+      for (const x of arr(d && d.m)) { const o = await dec(x); if (o) out.push(o); }
+      if (my === seq) cb(out);
+    }, (e) => { if (e && e.code === 'permission-denied') return logout(); cb([]); });
+  }
+  async function getList(name) {
+    const s = await ref(name).get(); const d = s.exists ? s.data() : null; const out = [];
+    for (const x of arr(d && d.m)) { const o = await dec(x); if (o) out.push(o); }
+    return out;
+  }
+  const CHAT_START = '2026-10-28';   // 판 대화 첫날
+  async function loadPast() {   // 첫날부터 어제까지 (주말·판 없는 날 대화도) 한 번씩만 읽어 위에 쌓음
+    const todo = [];
+    for (let d = CHAT_START; d < kstToday(); d = new Date(Date.parse(d + 'T00:00:00Z') + 86400000).toISOString().slice(0, 10)) if (!pastLoaded.has(d)) todo.push(d);
+    if (!todo.length) return;
+    todo.forEach((d) => pastLoaded.add(d));
+    const lists = await Promise.all(todo.map((d) => getList('chat_' + d).then((l) => l.map((m) => Object.assign({}, m, { day: d }))).catch(() => { pastLoaded.delete(d); return []; })));
+    pastMsgs = pastMsgs.concat(...lists).sort((a, b) => String(a.at).localeCompare(String(b.at)));
+    renderChat();
+  }
+  async function put(name, obj) { await ref(name).set({ v: await enc(obj) }); }
+  async function append(name, obj) { await ref(name).set({ m: firebase.firestore.FieldValue.arrayUnion(await enc(obj)) }, { merge: true }); }
+
+  let dates = [], dayDoc = null, viewDate = null;
+  let checks = { done: {}, notes: {}, result: {} }, chatMsgs = [], cnotes = {};
+  let pastMsgs = []; const pastLoaded = new Set();   // 지난 날 대화 (사용자 11/10 "그냥 계속 누적되게 못하나 대화창") — 저장은 그대로 날짜마다 chat_<날짜>
+  let tbmDate = nextWorkday(kstToday()), tbmDirty = false, tbmDoc = null;
+  let statusAt = 0, waitingSince = 0, doing = null, typingEl = null;   // doing = PC 훅이 올린 지금 하는 일 {at, text} (사용자 11/16 "확인중... 만 떠잇지말고 좀더 정확히 뭐하고있는지")
+  const subs = {};
+  const pending = new Map();
+  let busy = false, deferred = false, toastTimer = 0;
+
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 3200); }
+  function showState(msg) { $('state').textContent = msg; $('state').hidden = !msg; }
+  function writeFailed() { toast('저장 안 됨 · 인터넷 연결 확인하고 다시 해 줘'); }
+
+  // 쓰기 : 문서마다 한 번에 하나씩, 밀린 건 마지막 것만
+  function save(name, body) { pending.set(name, body); pump(); }
+  async function pump() {
+    if (busy) return;
+    busy = true;
+    try {
+      while (pending.size) {
+        const [name, body] = pending.entries().next().value;
+        pending.delete(name);
+        try { await put(name, body); } catch (e) { writeFailed(); }
+      }
+    } finally { busy = false; }
+  }
+  function addEvent(text, extra) {
+    if (!viewDate) return;
+    append('chat_' + viewDate, Object.assign({ id: uid(), from: 'event', text, at: nowIso() }, extra || {})).catch(writeFailed);
+  }
+  function chkEvent(text, extra) {   // 체크·메모 알림 — 지난 판이면 오늘 대화에 앞에 [11/14 판] 붙여서 (감시 watch.mjs는 오늘 대화만 구독, 11/18 지난 판 체크·메모 열면서)
+    const today = kstToday();
+    if (!viewDate || viewDate === today) return addEvent(text, extra);
+    append('chat_' + today, Object.assign({ id: uid(), from: 'event', text: '[' + md(viewDate) + ' 판] ' + text, at: nowIso(), date: viewDate }, extra || {})).catch(writeFailed);
+  }
+
+  // 할 일 목록 (메모 입력 중이면 다 친 뒤에 다시 그림)
+  function tasksBusy() { const a = document.activeElement; return !!(a && a.closest && a.closest('.tasks') && a.tagName === 'INPUT' && a.type === 'text'); }
+  function todayItems(d) {
+    const out = [], at = {};
+    const add = (x, flag) => { const id = String(x.id || ''); if (id && at[id]) { Object.assign(at[id], flag); return; } const o = Object.assign({}, x, flag); out.push(o); if (id) at[id] = o; };
+    arr(d.alerts).forEach((x) => add(x, { _must: true }));
+    arr(d.today).forEach((x) => add(x, {}));
+    return out;
+  }
+  const dkey = (x) => (isDate(x.date) ? x.date : '9999');
+  function weekItems(d) { return arr(d.week).slice().sort((p, q) => dkey(p).localeCompare(dkey(q))); }   // 가까운 날짜순
+  function renderTasks() {
+    if (tasksBusy()) { deferred = true; return; }
+    deferred = false;
+    const d = dayDoc; if (!d) return;
+    fillList('todayList', todayItems(d));
+    fillList('weekList', weekItems(d));
+    fillList('waiting', d.waiting);
+    fillOrders(d.orders);
+    renderProgress(); renderUpcoming();
+  }
+  function fillList(id, items) {
+    const ul = $(id); ul.replaceChildren();
+    const a = arr(items);
+    if (!a.length) { ul.append(el('li', 'empty', '없음')); return; }
+    const seen = new Set();
+    for (const it of a) {
+      const g = it.group ? String(it.group) : '';
+      if (!g) { ul.append(itemRow(it)); continue; }
+      if (seen.has(g)) continue;                     // 같은 공사는 처음 나온 자리에 모아서
+      seen.add(g);
+      const mem = a.filter((x) => String(x.group || '') === g);
+      const li = el('li', 'grp'), head = el('div', 'grp-t', g);
+      if (mem.some((x) => x._must)) head.append(' ', el('span', 'chip must', '꼭'));
+      else if (mem.some((x) => x.pri === 'high')) head.append(' ', el('span', 'chip hi', '높음'));
+      li.append(head);
+      const gn = mem.find((x) => x.groupNote);
+      if (gn) { const n = noteEl(gn.groupNote); n.classList.add('grp-n'); li.append(n); }
+      const sub = el('ul');
+      for (const x of mem) sub.append(itemRow(Object.assign({}, x, { pri: x._must ? x.pri : '' })));   // 높음 표시는 공사명에만
+      li.append(sub); ul.append(li);
+    }
+  }
+  function itemRow(it) {
+    const id = String(it.id || '');
+    const li = el('li', 'item' + (it._must ? ' must' : ''));
+    const on = !!checks.done[id];
+    if (on) li.classList.add('done');
+    const row = el('div', 'row');
+    const box = document.createElement('input');
+    box.type = 'checkbox'; box.id = 'chk-' + id; box.checked = on; box.disabled = !id;
+    box.addEventListener('change', () => setDone(id, box.checked));
+    const body = el('div', 'body');
+    const lab = el('div', 't', it.text || ''); box.setAttribute('aria-label', it.text || '');   // 글자 눌러도 체크 안 바뀜 (10/28 체크가 저절로 풀린 일)
+    const dl = it.label || (isDate(it.date) ? md(it.date) + ' (' + dow(it.date) + ')' : '');
+    if (dl) lab.prepend(el('span', 'dchip', dl));
+    if (it._must) lab.append(' ', el('span', 'chip must', '꼭'));
+    if (it._reg || it.regular) lab.append(' ', el('span', 'chip reg', '정기'));
+    if (it.pri === 'high' && !it._must) lab.append(' ', el('span', 'chip hi', '높음'));
+    body.append(lab);
+    if (it.note) body.append(noteEl(it.note));
+    if (id) body.append(memoLine(id));
+    if (id && cnotes[id]) { const c = el('div', 'cl'); c.append(el('span', 'memo-k', '답'), el('span', null, cnotes[id])); body.append(c); }
+    row.append(box, body); li.append(row);
+    return li;
+  }
+  function memoLine(id) {
+    const inp = document.createElement('input');
+    inp.type = 'text'; inp.className = 'memo-in'; inp.id = 'memo-' + id; inp.maxLength = 300;
+    inp.value = checks.notes[id] || ''; inp.placeholder = '메모'; inp.setAttribute('aria-label', '메모');
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); inp.blur(); }
+      else if (e.key === 'Escape') { inp.value = checks.notes[id] || ''; inp.blur(); }
+    });
+    inp.addEventListener('blur', () => setNote(id, inp.value.trim()));
+    return inp;
+  }
+  function pushChecks() { save('chk_' + viewDate, { date: viewDate, done: { ...checks.done }, notes: { ...checks.notes }, result: { ...checks.result }, at: nowIso() }); }
+  function itemText(id) {
+    for (const k of ['alerts', 'today', 'week', 'waiting', 'regular', 'orders']) { const f = arr(dayDoc && dayDoc[k]).find((x) => String(x.id) === id); if (f) return f.text || id; }
+    return id;
+  }
+  function setDone(id, on) {
+    chkEvent((on ? '✓ ' : '↺ ') + itemText(id), { kind: on ? 'check' : 'uncheck', item: id });
+    if (on) checks.done[id] = true; else delete checks.done[id];
+    pushChecks(); renderTasks();
+  }
+  function setNote(id, v) {
+    if ((checks.notes[id] || '') === v) return;
+    chkEvent('메모 · ' + itemText(id) + ' → ' + (v || '지움'), { kind: 'memo', item: id });
+    if (v) checks.notes[id] = v; else delete checks.notes[id];
+    pushChecks();
+  }
+  // 협력사 업무지시 : 지시마다 이행 / 불이행 체크 (둘 중 하나, 사용자 10/29) — 지시 글은 내가 넣음
+  function fillOrders(items) {
+    const ul = $('orders'); ul.replaceChildren();
+    const a = arr(items);
+    if (!a.length) { ul.append(el('li', 'empty', '없음')); return; }
+    for (const it of a) ul.append(orderRow(it));
+  }
+  function orderRow(it) {
+    const id = String(it.id || '');
+    const r = checks.result[id] || '';
+    const li = el('li', 'item' + (r ? ' ' + r : ''));
+    const row = el('div', 'row');
+    const body = el('div', 'body');
+    const lab = el('div', 't', it.text || '');
+    const tag = [isDate(it.date) ? md(it.date) : '', it.who || ''].filter(Boolean).join(' · ');
+    if (tag) lab.prepend(el('span', 'dchip', tag));
+    body.append(lab);
+    if (it.note) body.append(noteEl(it.note));
+    if (id) body.append(memoLine(id));
+    if (id && cnotes[id]) { const c = el('div', 'cl'); c.append(el('span', 'memo-k', '답'), el('span', null, cnotes[id])); body.append(c); }
+    const judge = el('div', 'judge');
+    for (const [v, name] of [['ok', '이행'], ['ng', '불이행']]) {
+      const l = el('label', 'jd ' + v);
+      const box = document.createElement('input');
+      box.type = 'checkbox'; box.checked = r === v; box.disabled = !id;
+      box.addEventListener('change', () => setResult(id, box.checked ? v : ''));
+      l.append(box, document.createTextNode(name)); judge.append(l);
+    }
+    row.append(body, judge); li.append(row);
+    return li;
+  }
+  function setResult(id, v) {
+    chkEvent((v === 'ok' ? '이행 · ' : v === 'ng' ? '불이행 · ' : '↺ ') + itemText(id), { kind: 'order', item: id, result: v });
+    if (v) checks.result[id] = v; else delete checks.result[id];
+    pushChecks(); renderTasks();
+  }
+  function renderProgress() {
+    const d = dayDoc; if (!d) return;
+    const ids = todayItems(d).map((x) => String(x.id || '')).filter(Boolean);   // 진행률 = 오늘 업무만
+    const n = ids.filter((i) => checks.done[i]).length;
+    $('progress').hidden = !ids.length;
+    $('progNum').textContent = n + ' / ' + ids.length;
+    $('progBar').style.width = ids.length ? (n / ids.length * 100) + '%' : '0';
+  }
+
+  function renderHeader() {
+    const d = dayDoc; if (!d) return;
+    const [y, m, dd] = d.date.split('-').map(Number);
+    $('dYear').textContent = y;
+    $('dTitle').replaceChildren(document.createTextNode(m + '월 ' + dd + '일 '), el('span', 'w', dow(d.date) + '요일'));
+    const meta = $('meta'); meta.replaceChildren();
+    for (const a of arr(d.absent)) { const s = el('span'); s.append(el('span', 'k', '휴가'), document.createTextNode(a)); meta.append(s); }
+    if (d.tbm && d.tbm.sent) { const s = el('span'); s.append(el('span', 'lamp g'), document.createTextNode('TBM ' + d.tbm.sent + ' 발송')); meta.append(s); }
+  }
+  function renderUpcoming() {
+    const d = dayDoc; const now = [], next = [];
+    const ok = (x) => isDate(x.date) && !(x.id && checks.done[String(x.id)]);   // 이미 한 일(체크된 것) 뺌
+    const byDate = (p, q) => p.date.localeCompare(q.date);
+    const a = arr(d.upcoming).filter(ok).sort(byDate);
+    const reg = arr(d.regular).filter(ok).sort(byDate).map((ev) => [ev, Math.round((utc(ev.date) - utc(d.date)) / 864e5), 0]).filter(([, s]) => s > 0);
+    for (const ev of a) {
+      const s = Math.round((utc(ev.date) - utc(d.date)) / 864e5);
+      const e = isDate(ev.end) ? Math.round((utc(ev.end) - utc(d.date)) / 864e5) : s;
+      if (s > 0) next.push([ev, s, e]); else if (e >= 0) now.push([ev, s, e]);
+    }
+    fillTimeline('ongoing', now); fillTimeline('upcoming', next); fillTimeline('upRegular', reg.map(([ev, s]) => [ev, s, s]));
+    $('todayOngoing').hidden = !now.length; $('todayIn').classList.toggle('solo', !now.length);   // 진행 중 일정 없으면 오늘 업무가 칸 전체
+  }
+  function fillTimeline(id, list) {
+    const ol = $(id); ol.replaceChildren();
+    if (!list.length) { ol.append(el('li', 'empty', '없음')); return; }
+    for (const [ev, s, e] of list) {
+      const li = el('li', 'ev' + (ev.pri === 'high' ? ' hi' : ''));
+      const when = el('div', 'when');
+      when.append(el('span', 'd', isDate(ev.end) ? md(ev.date) + ' ~ ' + md(ev.end) : md(ev.date) + ' (' + dow(ev.date) + ')'));
+      const tag = ev.label || (s > 0 ? 'D-' + s : s === 0 && e === 0 ? '오늘' : '진행 중');
+      when.append(el('span', 'dday' + (s > 0 && s <= 3 ? ' soon' : ''), tag));
+      const what = el('div', 'what');
+      const tt = el('div', 't', ev.text || '');
+      if (ev.pri === 'high') tt.append(' ', el('span', 'chip hi', '높음'));
+      what.append(tt);
+      if (ev.note) what.append(noteEl(ev.note));
+      li.append(when, what); ol.append(li);
+    }
+  }
+  function renderMeeting() {
+    const ul = $('meeting'); ul.replaceChildren();
+    const a = arr(dayDoc.meeting);
+    if (!a.length) { ul.append(el('li', 'empty', '없음')); return; }
+    for (const s of a) ul.append(el('li', null, s));
+  }
+
+  // 대화 (PC 쪽 감시 프로그램이 15초마다 읽고, 5분마다 연결 신호를 남김)
+  function alive() { return statusAt && Date.now() - statusAt < 12 * 60e3; }
+  function paintCState() {
+    const on = alive();
+    $('chatState').replaceChildren(el('span', 'lamp' + (on ? ' g' : ' a')), el('span', null, on ? '연결 중' : '연결 끊김 · 나중에 확인'));
+    $('dockLamp').className = 'lamp' + (on ? ' g' : ' a');
+  }
+  // 아래 대화줄 : 입력칸을 누르면 기록이 위로 펼쳐지고, 바깥을 누르면 접힘. 접혀 있을 때 온 답은 '새 답 n'
+  let seenReplies = -1;
+  const replyCount = () => chatMsgs.filter((m) => m.from === 'claude').length;
+  const dockOpen = () => !$('dockPanel').hidden;
+  function paintNew() { const n = seenReplies < 0 ? 0 : replyCount() - seenReplies; $('dockNew').hidden = n <= 0; $('dockNew').textContent = '새 글 ' + n; }
+  function openDock() { if (dockOpen()) return; $('dockPanel').hidden = false; seenReplies = replyCount(); paintNew(); const b = $('msgs'); b.scrollTop = b.scrollHeight; }
+  function closeDock() { $('dockPanel').hidden = true; }
+  function growChat() { const x = $('chatText'); x.style.height = 'auto'; x.style.height = Math.min(Math.max(x.scrollHeight, 42), 140) + 'px'; x.style.overflowY = x.scrollHeight > 140 ? 'auto' : 'hidden'; }
+  // 글 복사 : 화면 줄바꿈(pre-wrap)은 메일 편집기에 붙이면 일부가 띄어쓰기로 바뀜 → 줄바꿈을 <br>로 넣어 복사, ** 표시는 뺌 (사용자 11/4 "복사 붙여넣기 하니 줄바꿈 없이 들어가냐", "방법 없나")
+  function copyBtn(text) {
+    const b = el('button', 'cp', '복사'); b.type = 'button';
+    b.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const t = String(text).replace(/\*\*/g, '');
+      const html = '<div>' + t.split('\n').map((l) => l.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')).join('<br>') + '</div>';
+      let ok = false;
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'text/plain': new Blob([t], { type: 'text/plain' }), 'text/html': new Blob([html], { type: 'text/html' }) })]);
+        ok = true;
+      } catch (err) {
+        try { await navigator.clipboard.writeText(t); ok = true; } catch (err2) {
+          const x = document.createElement('textarea'); x.value = t; document.body.append(x); x.select();
+          try { ok = document.execCommand('copy'); } catch (err3) {}
+          x.remove();
+        }
+      }
+      b.textContent = ok ? '복사됨' : '복사 안 됨';
+      setTimeout(() => { b.textContent = '복사'; }, 1500);
+    });
+    return b;
+  }
+  function typingText() {   // 사용자 글 뒤에 올라온 '하는 일'만, 3분 지나면 예전처럼
+    const at = doing && doing.text ? Date.parse(doing.at) : 0;
+    if (!alive()) return '연결 끊김 · 연결되면 확인';
+    return at > waitingSince - 2000 && Date.now() - at < 180000 ? '확인 중 · ' + doing.text : '확인 중…';
+  }
+  function renderChat() {
+    const box = $('msgs');
+    const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
+    box.replaceChildren();
+    const all = pastMsgs.concat(chatMsgs.map((m) => Object.assign({}, m, { day: kstToday() })));
+    if (!all.length) box.append(el('div', 'msg sys', '기록 없음'));
+    let lastDay = '';
+    for (const m of all) {
+      if (m.day !== lastDay) {   // 날짜 줄
+        lastDay = m.day; const [y, mo, da] = m.day.split('-').map(Number);
+        box.append(el('div', 'daysep', md(m.day) + ' (' + '일월화수목금토'[new Date(Date.UTC(y, mo - 1, da)).getUTCDay()] + ')' + (m.day === kstToday() ? ' 오늘' : '')));
+      }
+      const cls = m.from === 'claude' ? 'claude' : m.from === 'me' ? 'me' : 'sys';
+      const d = el('div', 'msg ' + cls);
+      if (m.img) d.append(attImg(String(m.img)));
+      if (m.file && m.file.id) d.append(attFile(m.file));
+      d.append(document.createTextNode(m.text || ''));
+      if (cls !== 'sys') {
+        const at = el('span', 'at', stamp(m.at).split(' ')[1] || '');
+        if (cls === 'claude' && m.text) at.append(copyBtn(m.text));
+        d.append(at);
+      }
+      box.append(d);
+    }
+    const replied = chatMsgs.some((m) => m.from === 'claude' && Date.parse(m.at) > waitingSince - 2000);
+    const waiting = waitingSince && !replied && Date.now() - waitingSince < 300000;
+    typingEl = waiting ? el('div', 'typing', typingText()) : null;
+    if (typingEl) box.append(typingEl);
+    if (atBottom || waiting) box.scrollTop = box.scrollHeight;
+    if (dockOpen()) seenReplies = replyCount();
+    paintNew();
+  }
+  // 사진 : 긴 변 1600px JPEG로 줄여 암호화 → img_<id> 문서 하나(문서 한도 1MB) → 대화 글에 img 로 붙임. PC 감시 프로그램이 풀어서 파일로 저장 (사용자 10/29)
+  async function encBytes(u8) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, KEY, u8));
+    const out = new Uint8Array(12 + ct.length); out.set(iv); out.set(ct, 12);
+    return toB64(out);
+  }
+  async function decBytes(s) { const u = fromB64(s); return new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: u.subarray(0, 12) }, KEY, u.subarray(12))); }
+  async function shrink(file) {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = new Image(); await new Promise((res, rej) => { img.onload = res; img.onerror = () => rej(new Error('img')); img.src = url; });   // decode()는 화면이 안 그려질 때 멈춤 (11/2 시험에서 확인) → onload
+      for (const [side, q] of [[1600, 0.82], [1600, 0.7], [1280, 0.7], [1024, 0.65]]) {
+        const k = Math.min(1, side / Math.max(img.naturalWidth, img.naturalHeight));
+        const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        const b = await new Promise((res) => c.toBlob(res, 'image/jpeg', q));
+        if (b && b.size < 560000) return new Uint8Array(await b.arrayBuffer());
+      }
+      throw new Error('too big');
+    } finally { URL.revokeObjectURL(url); }
+  }
+  async function upImage(file) { const imgId = uid(); await ref('img_' + imgId).set({ v: await encBytes(await shrink(file)) }); return imgId; }
+  const imgUrls = new Map();   // 사진 id → 풀어 둔 주소 (한 번만 받음)
+  function loadImg(imgId) {
+    if (!imgUrls.has(imgId)) imgUrls.set(imgId, ref('img_' + imgId).get().then(async (s) => {
+      const d = s.exists ? s.data() : null;
+      return d && typeof d.v === 'string' ? URL.createObjectURL(new Blob([await decBytes(d.v)], { type: 'image/jpeg' })) : '';
+    }).catch(() => { imgUrls.delete(imgId); return ''; }));
+    return imgUrls.get(imgId);
+  }
+  function attImg(imgId) {
+    const im = el('img', 'att'); im.alt = '붙인 사진';
+    im.addEventListener('click', () => im.classList.toggle('big'));
+    im.addEventListener('load', () => { const b = $('msgs'); if (b.scrollHeight - b.scrollTop - b.clientHeight < 260) b.scrollTop = b.scrollHeight; });
+    loadImg(imgId).then((u) => { if (u) im.src = u; else im.alt = '사진을 못 불러왔어'; });
+    return im;
+  }
+  // 파일 : 60만 바이트씩 잘라 암호화 → fil_<id>_<번호> 문서들(문서 한도 1MB) + 대화 글에 file {id,name,size,type,n}. 사진(image/*)은 위 사진 방식
+  // 판 → PC : 감시 프로그램이 업무판/받은 파일/ 에 저장, PC → 판 : board.py send-file (사용자 10/29 "보드 채팅창으로 파일도 주고받을 수 있게, 메일로 왔다 갔다 할 필요 없이")
+  const PART = 600000, FMAX = 50 * 1024 * 1024;   // 15MB → 50MB (사용자 11/17 "이거 파일 업로드 용량 더늘려줘") — 파이어베이스 무료 저장 1GiB 전체에 걸리고 대화 파일 조각은 안 지워져서 50MB에서 멈춤 (board.py 와 같음)
+  const kb = (n) => n < 1048576 ? Math.max(1, Math.round(n / 1024)) + 'KB' : (n / 1048576).toFixed(1) + 'MB';
+  const isPic = (f) => f.type.startsWith('image/') && !/gif|svg/.test(f.type);
+  let attPending = [];   // 붙여 놓고 아직 안 보낸 사진·파일 → '등록' 때 글이랑 같이
+  function attach(file) {
+    if (!file) return;
+    if (!isPic(file) && file.size > FMAX) { toast('50MB까지만 돼 · 더 크면 메일로'); return; }
+    attPending.push({ file, url: isPic(file) ? URL.createObjectURL(file) : '' }); renderTray();
+    $('chatText').focus();
+  }
+  function renderTray() {
+    const t = $('attTray'); t.replaceChildren(); t.hidden = !attPending.length;
+    attPending.forEach((p, i) => {
+      const c = el('div', 'att-chip');
+      if (p.url) { const im = el('img'); im.src = p.url; im.alt = ''; c.append(im); }
+      c.append(el('span', 'ac-n', p.url ? '사진' : p.file.name || '파일'));
+      const x = el('button', null, '×'); x.type = 'button'; x.setAttribute('aria-label', '빼기');
+      x.addEventListener('click', () => { if (p.url) URL.revokeObjectURL(p.url); attPending.splice(i, 1); renderTray(); });
+      c.append(x); t.append(c);
+    });
+  }
+  async function upFile(file) {
+    const id = uid(), u8 = new Uint8Array(await file.arrayBuffer()), n = Math.max(1, Math.ceil(u8.length / PART));
+    for (let i = 0; i < n; i++) { if (n > 1) toast('파일 올리는 중… ' + (i + 1) + '/' + n); await ref('fil_' + id + '_' + i).set({ v: await encBytes(u8.subarray(i * PART, (i + 1) * PART)) }); }
+    return { id, name: file.name || '파일', size: file.size, type: file.type || '', n };
+  }
+  async function fileBlob(f) {   // fil_<id>_<번호> 조각 모아 하나로 (자료실·대화 파일, 보고서 PPT·쪽 그림)
+    const parts = [];
+    for (let i = 0; i < (f.n || 1); i++) {
+      const s = await ref('fil_' + f.id + '_' + i).get(); const d = s.exists ? s.data() : null;
+      if (!d || typeof d.v !== 'string') throw new Error('missing');
+      parts.push(await decBytes(d.v));
+    }
+    return new Blob(parts, { type: f.type || 'application/octet-stream' });
+  }
+  const pageUrls = new Map();   // 보고서 쪽 그림 (한 번 받으면 다시 안 받음)
+  const pageUrl = (f) => { if (!pageUrls.has(f.id)) pageUrls.set(f.id, fileBlob(f).then((b) => URL.createObjectURL(b)).catch(() => '')); return pageUrls.get(f.id); };
+  async function saveFileOf(f) {   // 내려받기
+    const url = URL.createObjectURL(await fileBlob(f));
+    const a = document.createElement('a'); a.href = url; a.download = f.name || '파일'; document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+  async function getFile(f, btn) {
+    const st = btn.querySelector('.af-s'), was = st.textContent;
+    btn.disabled = true; st.textContent = '받는 중…';
+    try { await saveFileOf(f); } catch (e) { toast('파일을 못 받았어 · 다시 해 줘'); }
+    st.textContent = was; btn.disabled = false;
+  }
+  function attFile(f) {
+    const b = el('button', 'att-file'); b.type = 'button'; b.title = f.name || '';
+    b.append(el('span', 'af-n', f.name || '파일'), el('span', 'af-s', kb(f.size || 0) + ' · 눌러서 받기'));
+    b.addEventListener('click', () => getFile(f, b));
+    return b;
+  }
+  async function sendChat() {
+    const v = $('chatText').value.trim();
+    if (!v && !attPending.length) return;
+    const cd = kstToday();   // 대화는 지난 판을 보고 있어도 늘 오늘 대화로 (사용자 11/2 "오늘이 아니면 채팅을 못 치는 거 같은데, 불편해")
+    $('chatText').value = ''; growChat();
+    waitingSince = Date.now();
+    if (!attPending.length) { append('chat_' + cd, { id: uid(), from: 'me', text: v, at: nowIso() }).catch(writeFailed); renderChat(); setTimeout(renderChat, 301000); return; }
+    const items = attPending; attPending = []; renderTray();
+    let i = 0;
+    try {   // 첨부 하나당 글 하나, 쓴 글은 첫 첨부에 같이
+      for (; i < items.length; i++) {
+        toast('올리는 중… ' + (i + 1) + '/' + items.length);
+        const f = items[i].file, extra = isPic(f) ? { img: await upImage(f) } : { file: await upFile(f) };
+        await append('chat_' + cd, Object.assign({ id: uid(), from: 'me', text: i ? '' : v, at: nowIso() }, extra));
+        if (items[i].url) URL.revokeObjectURL(items[i].url);
+      }
+      toast('보냄'); openDock(); renderChat(); setTimeout(renderChat, 301000);
+    } catch (e) { attPending = items.slice(i).concat(attPending); renderTray(); if (!i && v && !$('chatText').value) $('chatText').value = v; toast('못 올렸어 · 다시 등록 눌러 줘'); }   // 이미 간 건 빼고 남은 것만 다시
+  }
+
+  // 내일 TBM
+  function buildTbmForm() {
+    const box = $('tbmPeople');
+    PEOPLE.forEach((p, i) => {
+      const w = el('div', 'pp');
+      const lab = el('label', null, p); lab.htmlFor = 'pp-' + i;
+      const sel = document.createElement('select'); sel.id = 'pp-' + i;
+      for (const s of STATUS) { const o = el('option', null, s); o.value = s; sel.append(o); }
+      sel.addEventListener('change', markDirty);
+      w.append(lab, sel); box.append(w);
+    });
+    $('tbmWork').addEventListener('input', markDirty);
+    $('tbmVendors').addEventListener('input', markDirty);
+    $('tbmDate').value = tbmDate;
+    $('tbmDate').addEventListener('change', () => { if (!isDate($('tbmDate').value)) return; tbmDate = $('tbmDate').value; tbmDirty = false; watchTbm(); });
+  }
+  function markDirty() { tbmDirty = true; $('tbmSaved').textContent = '저장 안 됨'; $('tbmSaved').classList.add('dirty'); }
+  function fillTbm(src) {
+    PEOPLE.forEach((p, i) => { const v = src && src.people && src.people[p]; $('pp-' + i).value = STATUS.includes(v) ? v : '출근'; });
+    $('tbmWork').value = (src && src.work) || '';
+    $('tbmVendors').value = (src && src.vendors) || '';
+  }
+  function tbmDefaults() {
+    const n = dayDoc && dayDoc.nextTbm;
+    return n && n.date === tbmDate ? { people: n.people || {}, work: n.work || '', vendors: n.vendors || '' } : null;
+  }
+  function showTbm() {
+    if (tbmDirty) return;
+    fillTbm(tbmDoc || tbmDefaults());
+    $('tbmSaved').classList.remove('dirty');
+    $('tbmSaved').textContent = tbmDoc ? '저장됨 ' + stamp(tbmDoc.at) : '아직 저장 안 함';
+  }
+  function watchTbm() {
+    if (subs.tbm) subs.tbm();
+    tbmDoc = null; showTbm();
+    const date = tbmDate;
+    subs.tbm = sub('tbm_' + date, (v) => { if (date !== tbmDate || pending.has('tbm_' + date)) return; tbmDoc = v || null; showTbm(); });
+  }
+
+  // 페이지 2 : 자료 (사용자 10/29 "대시보드에 페이지 2개, 2페이지에 니가 정리한 자료를 PPT로") — rep_index 목록, rep_<id> = {title, date, slides:[…]}
+  let repIndex = [], repOpen = null, repDoc = null, slideAt = 0, deckMode = 'scroll';
+  try { deckMode = localStorage.getItem('mb_deck') === 'one' ? 'one' : 'scroll'; } catch (e) {}
+  function setMode(m) { deckMode = m; try { localStorage.setItem('mb_deck', m); } catch (e) {} renderDeck(); }
+  function toTop() { const y = document.querySelector('.top').getBoundingClientRect().bottom + window.scrollY; if (window.scrollY > y) window.scrollTo(0, y); }   // 머리 아래(탭 자리)까지만 올림
+  function setTab(tab) {
+    const was = document.body.dataset.tab;
+    document.body.dataset.tab = tab;
+    if (was && was !== tab) toTop();   // 내려간 채로 바꾸면 새 페이지 처음부터 보이게 (10/29)
+    $('tabDay').setAttribute('aria-selected', String(tab === 'day')); $('tabRep').setAttribute('aria-selected', String(tab === 'rep')); $('tabFile').setAttribute('aria-selected', String(tab === 'file')); $('tabLog').setAttribute('aria-selected', String(tab === 'log'));
+    try { localStorage.setItem('mb_tab', tab); } catch (e) {}
+    if (tab === 'rep') renderReports();
+    if (tab === 'file') renderFiles();
+    if (tab === 'log') renderLog();
+  }
+  // 페이지 4 : 수변전일지 (읽기만, 2026-11-20 사용자 "업무판에 저장하는칸 따로만들어봐 거기저장해 난 거기서 볼수잇나?")
+  // 시설팀 입력 페이지(새 저장소 index.html)가 ppld 'sl_<일지 열쇠 해시 16>_<날짜>'에 일지 열쇠로 암호화해 넣은 지침을 풂 — 일지 열쇠는 판 문서 sublog_key(판 키로 암호화)
+  const LOG_TIMES = ['10', '14', '18', '24'];   // 입력 페이지 TIMES 와 같게
+  const LOG_PAN = [['HV', '특고압 HV-4', 1000, 'MWh'], ['LV4', 'LV-4 전등·전열', 1000, 'MWh'], ['LV5', 'LV-5 냉·난방', 1000, 'MWh'], ['LV9', 'LV-9 일반동력', 1, 'kWh'], ['LV10', 'LV-10 비상동력', 1000, 'MWh']];
+  let logKey = null, logPfx = '', logDate = '', logCache = {};
+  const logAdd = (s, n) => isoDay(utc(s) + n * 864e5);
+  const logNum = (s) => { s = String(s == null ? '' : s).replace(/[,\s]/g, ''); return s === '' ? null : (/^-?\d+(\.\d+)?$/.test(s) ? Number(s) : NaN); };
+  const logFmt = (n) => Math.round(n).toLocaleString('ko-KR');
+  async function logInit() {
+    if (logKey) return true;
+    const s = await ref('sublog_key').get(); const d = s.exists ? s.data() : null;
+    const o = d && typeof d.v === 'string' ? await dec(d.v) : null;
+    if (!o || !o.k) return false;
+    logPfx = 'sl_' + hex(new Uint8Array(await crypto.subtle.digest('SHA-256', te.encode(o.k)))).slice(0, 16) + '_';
+    const base = await crypto.subtle.importKey('raw', te.encode(o.k), 'PBKDF2', false, ['deriveKey']);
+    logKey = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: te.encode('sublog-v1'), iterations: 150000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+    return true;
+  }
+  async function logDay(d) {   // {r, x, u} 또는 null — 지난 날은 한 번 받은 것 다시 씀, 오늘·어제는 매번 새로
+    if (d in logCache && d < logAdd(kstToday(), -1)) return logCache[d];
+    const s = await fs.collection('ppld').doc(logPfx + d).get(); const v = s.exists ? s.data().v : null;
+    let o = null;
+    if (typeof v === 'string') { try { const u = fromB64(v); o = JSON.parse(td.decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: u.subarray(0, 12) }, logKey, u.subarray(12)))); } catch (e) { o = null; } }
+    return (logCache[d] = o ? { r: o.r || {}, x: o.x || {}, u: o.u } : null);
+  }
+  const logVal = (o, id, t) => (o && o.r[id] && o.r[id][t] != null ? String(o.r[id][t]) : '');
+  function logSegs(a, p, pan) {   // 시간대 kWh — null 빈칸, 'neg' 작아짐, 'x' 교체
+    const [id, , mul] = pan;
+    if (a && a.x[id]) return LOG_TIMES.map(() => 'x');
+    const pts = [logVal(p, id, '24'), ...LOG_TIMES.map((t) => logVal(a, id, t))].map(logNum);
+    return LOG_TIMES.map((t, i) => { const x = pts[i], y = pts[i + 1]; if (x == null || y == null || Number.isNaN(x) || Number.isNaN(y)) return null; const d = (y - x) * mul; return d < 0 ? 'neg' : Math.round(d); });
+  }
+  function logUse(a, p, pan) {
+    const [id, , mul] = pan;
+    if (a && a.x[id]) return 'x';
+    const x = logNum(logVal(p, id, '24')), y = logNum(logVal(a, id, '24'));
+    if (x == null || y == null || Number.isNaN(x) || Number.isNaN(y)) return null;
+    const d = (y - x) * mul; return d < 0 ? 'neg' : Math.round(d);
+  }
+  const logLabels = () => { const pts = ['0', ...LOG_TIMES]; return LOG_TIMES.map((t, i) => (pts[i] === '0' && t === '24' ? '하루' : pts[i] + ' ~ ' + t + '시')); };
+  const logTd = (v, cls) => { const td = el('td', 'v' + (cls ? ' ' + cls : '')); if (v === 'x') { td.textContent = '교체'; td.classList.add('xo'); } else if (v === 'neg') { td.textContent = '확인'; td.classList.add('red'); } else if (typeof v === 'number') td.textContent = logFmt(v); else if (v != null) td.textContent = v; return td; };
+  const logTable = (head) => { const t = el('table', 'log-t'); const tr = el('tr'); head.forEach((h) => tr.append(el('th', null, h))); t.append(tr); return t; };
+  const logCard = (title, color, ...kids) => { const c = el('div', 'log-card'); if (color) c.style.setProperty('--k', color); c.append(el('h3', null, title)); const sc = el('div', 'log-scroll'); sc.append(kids[0]); c.append(sc, ...kids.slice(1)); return c; };
+  const logSumLv = (vals) => (vals.every((v) => typeof v === 'number') ? vals.reduce((x, y) => x + y, 0) : null);
+  function logChg(a, b) {
+    const td = el('td', 'v');
+    if (typeof a !== 'number' || typeof b !== 'number' || !b) return td;
+    const pct = (a - b) / b * 100; td.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(1) + '% ' + (pct > 0 ? '↑' : pct < 0 ? '↓' : '');
+    if (Math.abs(pct) > 2) td.classList.add('big', pct > 0 ? 'up' : 'dn');
+    return td;
+  }
+  function logViews(d, a, p, w, wp) {
+    const wk = logAdd(d, -7), out = [];
+    const day = LOG_PAN.map((pn) => logUse(a, p, pn)), last = LOG_PAN.map((pn) => logUse(w, wp, pn));
+    const t1 = logTable(['반', '하루 kWh', '지난주 (' + md(wk) + ' ' + dow(wk) + ')', '증감']);
+    LOG_PAN.forEach((pn, i) => { const tr = el('tr'); tr.append(el('td', 'it', pn[1]), logTd(day[i]), logTd(last[i]), logChg(day[i], last[i])); t1.append(tr); });
+    const lvA = logSumLv(day.slice(1)), lvB = logSumLv(last.slice(1));
+    const s1 = el('tr', 'sum'); s1.append(el('td', 'it', 'LV 합계'), logTd(lvA), logTd(lvB), logChg(lvA, lvB)); t1.append(s1);
+    const s2 = el('tr'); s2.append(el('td', 'it', '특고압 − LV 합계'));
+    if (typeof day[0] === 'number' && typeof lvA === 'number') { s2.append(logTd((day[0] - lvA >= 0 ? '+' : '−') + logFmt(Math.abs(day[0] - lvA))), el('td', 'v'), logTd(lvA ? ((day[0] - lvA) / lvA * 100 >= 0 ? '+' : '') + ((day[0] - lvA) / lvA * 100).toFixed(1) + '%' : '')); } else s2.append(el('td', 'v'), el('td', 'v'), el('td', 'v'));
+    t1.append(s2);
+    out.push(logCard('반별 하루 사용량 — 지난주 같은 요일 대비', 'var(--c2)', t1, el('div', 'log-note', '굵은 글자 = ±2% 넘음 (빨강 ↑ 늘어남 · 파랑 ↓ 줄어듦). 작년 비교는 매일 전력 점검 보고서. 특고압·LV-4·LV-5 지침은 화면이 100 kWh 단위라 하루 ±100 kWh 흔들림')));
+    if (LOG_TIMES.length > 1) {
+      const t2 = logTable(['반', ...logLabels(), '하루']); const segs = LOG_PAN.map((pn) => logSegs(a, p, pn));
+      LOG_PAN.forEach((pn, i) => { const tr = el('tr'); tr.append(el('td', 'it', pn[1])); segs[i].forEach((v) => tr.append(logTd(v))); tr.append(logTd(day[i])); t2.append(tr); });
+      const s3 = el('tr', 'sum'); s3.append(el('td', 'it', 'LV 합계')); LOG_TIMES.forEach((t, j) => s3.append(logTd(logSumLv(segs.slice(1).map((x) => x[j]))))); s3.append(logTd(lvA)); t2.append(s3);
+      out.push(logCard('시간대별 사용량 kWh — 몇 시에 늘었나', 'var(--c1)', t2, el('div', 'log-note', '0 ~ 10시 = 전날 24시 → 10시. 시간대 칸은 ±100 kWh 오차 (특고압·LV-4·LV-5)')));
+    }
+    const passed = (t) => Date.now() > utc(d) + (Number(t) - 9) * 3600e3 + 3600e3;
+    const t3 = logTable(['반', '단위', '전날 24시', ...LOG_TIMES.map((t) => t + '시'), '교체·초기화']);
+    LOG_PAN.forEach((pn) => {
+      const [id, name, , unit] = pn; const tr = el('tr'); tr.append(el('td', 'it', name), el('td', 'v', unit), logTd(logVal(p, id, '24')));
+      let before = logNum(logVal(p, id, '24'));
+      LOG_TIMES.forEach((t) => {
+        const raw = logVal(a, id, t), v = logNum(raw); let cls = '';
+        if (v == null) cls = passed(t) ? 'yel' : '';
+        else if (Number.isNaN(v) || (!(a && a.x[id]) && before != null && !Number.isNaN(before) && v < before)) cls = 'red';
+        if (v != null && !Number.isNaN(v)) before = v;
+        tr.append(logTd(raw, cls));
+      });
+      tr.append(logTd(a && a.x[id] ? 'O' : '')); t3.append(tr);
+    });
+    out.push(logCard('입력된 지침 (Wh 화면 값)', '#F2B95C', t3, el('div', 'log-note', '빨강 = 앞 시각·전날보다 작은 지침 · 노랑 = 지난 시각인데 빈칸')));
+    return out;
+  }
+  async function renderLog() {
+    if (!logDate) logDate = kstToday();
+    const d = logDate, box = $('logBody');
+    $('logDate').value = d; $('logDate').max = kstToday(); $('logDow').textContent = '(' + dow(d) + ')'; $('logNext').disabled = d >= kstToday();
+    box.replaceChildren(el('div', 'log-note', '불러오는 중…'));
+    try {
+      if (!(await logInit())) { box.replaceChildren(el('div', 'log-note', '일지 열쇠가 아직 판에 없음 (log_web_read.py put-key)')); return; }
+      const wk = logAdd(d, -7);
+      const [a, p, w, wp] = await Promise.all([logDay(d), logDay(logAdd(d, -1)), logDay(wk), logDay(logAdd(wk, -1))]);
+      if (d !== logDate) return;
+      $('logRo').textContent = '읽기만' + (a && a.u ? ' · 마지막 입력 ' + stamp(a.u) : ' · 입력 없음');
+      box.replaceChildren(...logViews(d, a, p, w, wp));
+    } catch (e) { box.replaceChildren(el('div', 'log-note', '못 불러옴 : ' + (e && e.message ? e.message : e))); }
+  }
+  async function logExcel(month) {
+    const b = $(month ? 'logXm' : 'logXd'); const old = b.textContent; b.disabled = true; b.textContent = '만드는 중…';
+    try {
+      if (!(await logInit())) throw new Error('일지 열쇠 없음');
+      await loadJs('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+      const ym = logDate.slice(0, 7); let ds = [logDate];
+      if (month) { ds = []; for (let x = ym + '-01'; x.slice(0, 7) === ym && x <= kstToday(); x = logAdd(x, 1)) ds.push(x); }
+      const want = [logAdd(ds[0], -1), ...ds], got = {};
+      for (let i = 0; i < want.length; i += 4) { const part = want.slice(i, i + 4); const r = await Promise.all(part.map(logDay)); part.forEach((k, j) => { got[k] = r[j]; }); }
+      const head = ['날짜', '요일', '반', '단위', '전날 24시', ...LOG_TIMES.map((t) => t + '시'), '교체·초기화', ...logLabels().map((l) => l + ' kWh'), ...(LOG_TIMES.length > 1 ? ['하루 kWh'] : [])];
+      const cv = (v) => (v === 'x' ? '교체' : v === 'neg' ? '확인' : v);
+      const nv = (s) => { const v = logNum(s); return v == null || Number.isNaN(v) ? s : v; };
+      const aoa = [head];
+      ds.forEach((d) => { const a = got[d], p = got[logAdd(d, -1)]; LOG_PAN.forEach((pn) => { const [id, name, , unit] = pn; aoa.push([d, dow(d), name, unit, nv(logVal(p, id, '24')), ...LOG_TIMES.map((t) => nv(logVal(a, id, t))), a && a.x[id] ? 'O' : '', ...logSegs(a, p, pn).map(cv), ...(LOG_TIMES.length > 1 ? [cv(logUse(a, p, pn))] : [])]); }); });
+      const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!cols'] = head.map((h, i) => ({ wch: i === 2 ? 16 : 12 }));
+      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, month ? ym : logDate);
+      XLSX.writeFile(wb, '부산메리츠타워_수변전일지_' + (month ? ym : logDate) + '.xlsx');
+    } catch (e) { toast('엑셀 못 만듦 : ' + (e && e.message ? e.message : e)); }
+    b.disabled = false; b.textContent = old;
+  }
+  // 페이지 3 : 자료실 (사용자 10/30 "나는 판 대화로 파일 보내고, 너는 자료실 탭 만들어서 내가 받고", "자료는 그대로 놔두고 자료실 탭이 따로") — files 목록(최근 것 먼저), board.py send-file 이 올림
+  let fileIdx = [];
+  const isTbmFile = (f) => /^TBM 회의록/.test(f.name || '');   // 매일 아침 예약작업이 올리는 TBM (11/2~) → 오른쪽 칸
+  function renderFiles() {
+    const box = $('fileList'); box.replaceChildren();
+    const day = (d) => (isDate(d) ? md(d) + ' (' + dow(d) + ')' : '');
+    // 11/13 사용자 "업데이트한 날짜만 표기되는데 시간도 표기해줘 분까지" : 올린 시각(at, UTC) → 한국 시각 HH:MM
+    const hm = (at) => { const t = new Date(at || ''); if (isNaN(t)) return ''; const k = new Date(t.getTime() + 9 * 3600e3); return ' ' + String(k.getUTCHours()).padStart(2, '0') + ':' + String(k.getUTCMinutes()).padStart(2, '0'); };
+    const tb = $('tbmFiles'); tb.replaceChildren();
+    const tbms = fileIdx.filter(isTbmFile).slice(0, 10);
+    if (!tbms.length) tb.append(el('p', 'rep-empty', '아직 없음'));
+    for (const f of tbms) {   // 한 줄 : 날짜 · 받기 (이름은 매일 같아서 날짜로 보여 줌)
+      const r = el('div', 'file-row'); r.title = f.text || f.name || '';
+      const b = el('button', 'btn fr-b'); b.type = 'button'; b.append(el('span', 'af-s', '받기'));
+      b.addEventListener('click', () => getFile(f, b));
+      r.append(el('span', 'fr-n', (day(f.date) + hm(f.at)) || f.name), el('span', 'fr-m', kb(f.size || 0)), b); tb.append(r);
+    }
+    const list = fileIdx.filter((f) => !isTbmFile(f));
+    if (!list.length) { box.append(el('p', 'rep-empty', '올라온 파일 없음')); return; }
+    const reopen = [];
+    const row = (f, withDate) => {   // 한 줄 : 이름 · 크기(·날짜) · (보기) · 받기 — getFile 이 버튼 안 .af-s 글자를 '받는 중…'으로
+      const r = el('div', 'file-row'); r.title = f.name || '';
+      const n = el('span', 'fr-n', f.name || '파일'); if (f.text) n.append(el('small', null, f.text));
+      const b = el('button', 'btn fr-b'); b.type = 'button'; b.append(el('span', 'af-s', '받기'));
+      b.addEventListener('click', () => getFile(f, b));
+      r.append(n, el('span', 'fr-m', kb(f.size || 0) + (withDate ? ' · ' + day(f.date) + hm(f.at) : '')));
+      const pg = viewPages(f);
+      if (pg.length) {   // 보기 : 쪽 그림을 줄 아래에 펼침 (사용자 11/12 "판에서 볼 수 있게 자료실도 보고서처럼, 보고 다운받게")
+        // 11/13 사용자 "접기 보기 따로 버튼 말고 해당 칸의 받기 말고 어딜 눌러도 파일 보이고, 파일 보다가 아무 데나 누르면 다시 접기로" → 보기 버튼 없앰, 줄을 누르면 펼침/접힘
+        r.classList.add('can-view'); r.tabIndex = 0; r.setAttribute('role', 'button'); r.setAttribute('aria-expanded', 'false');
+        r.addEventListener('click', (e) => { if (!e.target.closest('.fr-b')) toggleView(f, r); });
+        r.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === r) { e.preventDefault(); toggleView(f, r); } });
+        if (fileOpen.has(f.id)) reopen.push([f, r]);   // 목록이 다시 그려져도 펼친 건 그대로
+      }
+      r.append(b);
+      return [r, b];
+    };
+    for (let i = 0; i < list.length;) {
+      const f = list[i], bid = f.batch && f.batch.id;
+      if (!bid) { const one = el('div', 'file-one'); one.append(row(f, true)[0]); box.append(one); i++; continue; }
+      const items = []; while (i < list.length && list[i].batch && list[i].batch.id === bid) items.push(list[i++]);
+      const g = el('div', 'file-batch'), h = el('div', 'fb-h');
+      const all = el('button', 'btn solid'); all.type = 'button'; all.textContent = '모두 받기';
+      h.append(el('span', 'fb-t', f.batch.title || '묶음'), el('span', 'fb-m', items.length + '개 · ' + day(f.date) + hm(f.at)), all); g.append(h);
+      const btns = items.map((x) => { const [r, b] = row(x, false); g.append(r); return [x, b]; });
+      all.addEventListener('click', async () => { all.disabled = true; for (const [x, b] of btns) await getFile(x, b); all.disabled = false; });   // 차례로 다 내려받음 (크롬은 처음 한 번 '여러 파일 다운로드' 허용을 물음)
+      box.append(g);
+    }
+    for (const [f, r] of reopen) { fileOpen.delete(f.id); toggleView(f, r); }
+  }
+  const viewPages = (f) => (arr(f.pages).length ? arr(f.pages) : /^image\/(png|jpe?g|webp)$/.test(f.type || '') ? [f] : []);   // 쪽 그림 (그림 파일은 그 자체)
+  const fileOpen = new Set();   // 펼친 파일 (목록이 다시 그려져도 유지)
+  function toggleView(f, r) {
+    const nx = r.nextElementSibling;
+    if (nx && nx.classList.contains('file-view')) {   // 접기 : 펼친 그림이 길어 줄이 화면 위로 올라가 있으면 그 줄로 돌아옴
+      nx.remove(); fileOpen.delete(f.id); r.setAttribute('aria-expanded', 'false');
+      if (r.getBoundingClientRect().top < 0) r.scrollIntoView({ block: 'start' });
+      return;
+    }
+    const box = el('div', 'file-view'), pg = viewPages(f);
+    box.title = '누르면 접힘'; box.addEventListener('click', () => toggleView(f, r));   // 그림 아무 데나 누르면 접힘
+    pg.forEach((p, i) => {
+      const im = el('img', 's-img'); im.alt = (f.name || '파일') + ' ' + (i + 1) + '쪽'; im.loading = 'lazy';
+      pageUrl(p).then((u) => { if (u) im.src = u; else im.replaceWith(el('p', 'rep-empty', (i + 1) + '쪽을 못 불러왔어')); });
+      box.append(im, el('div', 's-pg', (i + 1) + ' / ' + pg.length));
+    });
+    r.after(box); fileOpen.add(f.id); r.setAttribute('aria-expanded', 'true');
+  }
+  let repChip = ''; try { repChip = localStorage.getItem('mb_repchip') || ''; } catch (e) {}   // 보고서 탭에서 고른 칩 ('' = 보고서, 그 밖엔 reg 값) — 처음엔 '보고서'
+  function renderReports() {
+    if (repOpen) { renderDeck(); return; }
+    $('deck').hidden = true;
+    const box = $('repList'); box.hidden = false; box.replaceChildren();
+    if (!repIndex.length) { selMode = false; sel.clear(); selBar(); box.append(el('p', 'rep-empty', '아직 올린 보고서가 없어. 정리해 달라고 하면 여기에 올려둘게.')); return; }
+    const card = (r, i) => {
+      const id = String(r.id), w = el('div', 'rep-item' + (selMode ? ' sel-mode' : '') + (sel.has(id) ? ' on' : '')); w.dataset.id = id;
+      const b = el('button', 'rep-card'); b.type = 'button'; b.style.setProperty('--k', CK(i));
+      const t = el('span', 'rep-t', r.title || ''); if (r.title) t.title = r.title;   // 두 줄 넘으면 잘리니 마우스 올리면 전체
+      b.append(el('span', 'rep-date', [isDate(r.date) ? md(r.date) + ' (' + dow(r.date) + ')' : '', r.slides ? r.slides + '장' : ''].filter(Boolean).join(' · ')), t);
+      b.addEventListener('click', () => { if (!selMode) return openReport(id); if (sel.has(id)) sel.delete(id); else sel.add(id); renderReports(); });
+      w.append(b);
+      if (selMode) { const ck = el('span', 'rep-ck'); ck.textContent = sel.has(id) ? '✓' : ''; w.append(ck); }
+      else { const x = el('button', 'rep-x'); x.type = 'button'; x.textContent = '삭제'; x.title = '이 보고서 지우기 (한 번 더 눌러야 지워짐)'; x.addEventListener('click', (e) => { e.stopPropagation(); armDelete(x, [id], '삭제?', '삭제'); }); w.append(x); }
+      box.append(w);
+    };
+    // 칩 (사용자 11/17 "주간점검 월간점검 계절별 이렇게 나누는게", "정기보고서를 내리는게맞는거같은데", "저렇게 가로로 하는방법이 최선인가") : 보고서(reg 없는 것) → 주간 → 월간 → 계절별 → 다른 reg(처음 나온 순), 있는 것만 · 고른 칩 카드만 보임 · reg가 하나도 없으면 칩 없이 예전 그대로
+    const ORDER = ['주간', '월간', '계절별'], rank = (g) => (ORDER.indexOf(g) + 1) || 99, grp = (r) => (r.reg ? String(r.reg) : '');
+    const regs = [...new Set(repIndex.filter((r) => r.reg).map(grp))].sort((a, b) => rank(a) - rank(b));
+    if (!regs.length) { repIndex.forEach(card); selBar(); return; }
+    const chips = (repIndex.some((r) => !r.reg) ? [''] : []).concat(regs);
+    const cur = chips.includes(repChip) ? repChip : chips[0];
+    const row = el('div', 'rep-chips'); row.setAttribute('role', 'tablist'); row.setAttribute('aria-label', '보고서 묶음');
+    chips.forEach((g) => {
+      const c = el('button', 'rep-chip', g || '보고서'); c.type = 'button'; c.setAttribute('role', 'tab'); c.setAttribute('aria-selected', String(g === cur)); c.dataset.chip = g;
+      c.append(el('span', 'rep-chip-n', String(repIndex.filter((r) => grp(r) === g).length)));
+      c.addEventListener('click', () => {
+        if (g === cur) return;
+        repChip = g; try { localStorage.setItem('mb_repchip', g); } catch (e) {}
+        sel.clear(); renderReports();   // 선택 삭제는 보이는 칩 안에서만
+        const f = $('repList').querySelector('.rep-chip[aria-selected="true"]'); if (f) f.focus();
+      });
+      row.append(c);
+    });
+    box.append(row);
+    repIndex.forEach((r, i) => { if (grp(r) === cur) card(r, i); });
+    selBar();
+  }
+  // 보고서 지우기 (사용자 11/3 "보고서 삭제 버튼도", "목록에서 칸 우상단에 삭제 버튼, 로그아웃 왼쪽에 다중 삭제 — 누르고 체크하고 삭제") : 모두 두 번 눌러야 지움 (첫 번째는 4초 동안 '정말?')
+  let selMode = false;
+  const sel = new Set();
+  function selBar() {
+    const list = !repOpen && repIndex.length > 0, a = $('repSel'), d = $('repSelDel');
+    a.hidden = !list; d.hidden = !list || !selMode;
+    a.textContent = selMode ? '취소' : '선택 삭제';
+    if (!d.dataset.arm) { d.disabled = !sel.size; d.textContent = sel.size ? sel.size + '개 삭제' : '골라 줘'; }
+  }
+  function armDelete(btn, ids, label, idle) {
+    if (btn.dataset.arm) { clearTimeout(+btn.dataset.arm); delete btn.dataset.arm; btn.classList.remove('arm'); return doDelete(ids, btn); }
+    btn.dataset.arm = String(setTimeout(() => { delete btn.dataset.arm; btn.classList.remove('arm'); btn.textContent = idle; selBar(); }, 4000));
+    btn.classList.add('arm'); btn.textContent = label;
+  }
+  async function doDelete(ids, btn) {
+    const set = new Set(ids.map(String));
+    if (btn) { btn.disabled = true; btn.textContent = '지우는 중…'; }
+    try {
+      await put('rep_index', { list: repIndex.filter((r) => !set.has(String(r.id))) });
+      for (const id of set) {
+        try { const s = await ref('rep_' + id).get(), d = s.exists ? s.data() : null, v = d && typeof d.v === 'string' ? await dec(d.v) : null; for (const f of [...arr(v && v.files), ...arr(v && v.slides).map((s) => s && s.img).filter(Boolean)]) for (let i = 0; i < (f.n || 1); i++) await ref('fil_' + f.id + '_' + i).delete(); } catch (e) {}   // 붙인 PPT·쪽 그림 조각도
+        try { await ref('rep_' + id).delete(); } catch (e) {}
+      }   // 목록에서 빠지면 안 보임 — 문서 삭제가 막혀도 목록 기준
+      repIndex = repIndex.filter((r) => !set.has(String(r.id))); sel.clear(); selMode = false;
+      if (repOpen && set.has(String(repOpen))) closeReport(); else renderReports();
+      toast(set.size > 1 ? set.size + '개 지움' : '보고서 지움');
+    } catch (e) { writeFailed(); }
+    finally { if (btn) { btn.disabled = false; btn.textContent = btn.id === 'deckDel' ? '삭제' : btn.textContent; } selBar(); }
+  }
+  function openReport(id) {
+    repOpen = id; repDoc = null; slideAt = 0;
+    if (subs.rep) subs.rep();
+    subs.rep = sub('rep_' + id, (v) => { if (repOpen !== id) return; repDoc = v || null; renderDeck(); });
+    renderDeck();
+  }
+  function closeReport() { repOpen = null; repDoc = null; if (subs.rep) { subs.rep(); subs.rep = null; } renderReports(); }
+  function backToList() {   // 보고서 보다가 내용 아무 데나 누르면 목록으로, 보던 칸이 보이게 (사용자 11/13 "보고서 탭도 자료 보다가 클릭하면 목록으로 가게")
+    const id = repOpen; closeReport();
+    const c = id && $('repList').querySelector('[data-id="' + CSS.escape(id) + '"]');
+    if (c) c.scrollIntoView({ block: 'center' }); else toTop();
+  }
+  // 보고서 PDF 내려받기 (사용자 11/3 "보고서에서 보고 바로 PDF로 내려받을 수 있게 버튼") : 누를 때만 html2canvas·jsPDF 불러와 한 장씩 그려 A4 가로 폭(297mm) 쪽으로
+  const loadJs = (src) => new Promise((ok, no) => { if (document.querySelector('script[src="' + src + '"]')) return ok(); const t = document.createElement('script'); t.src = src; t.onload = ok; t.onerror = () => no(new Error('불러오기 실패')); document.head.append(t); });
+  // html2canvas 1.4.1은 color-mix()가 계산된 'color(srgb …)'를 못 읽음 → 복제본에 rgb()로 바꿔 넣음
+  const srgb = (v) => v.replace(/color\(srgb ([\d.e-]+) ([\d.e-]+) ([\d.e-]+)(?: \/ ([\d.e-]+))?\)/g, (_, r, g, b, a) => 'rgba(' + [r, g, b].map((x) => Math.round(Math.min(1, Math.max(0, +x)) * 255)).join(',') + ',' + (a === undefined ? 1 : +a) + ')');
+  function rgbOnly(src, cl) {
+    const a = [src, ...src.querySelectorAll('*')], b = [cl, ...cl.querySelectorAll('*')];
+    a.forEach((n, i) => { const cs = getComputedStyle(n), t = b[i]; if (!t) return; for (let j = 0; j < cs.length; j++) { const k = cs[j], v = cs.getPropertyValue(k); if (v.includes('color(')) t.style.setProperty(k, srgb(v)); } });
+  }
+  // PPT 받기 (사용자 11/12 "보고서에도 원본 그대로 보이게 하자, 다운받으면 PDF 말고 PPT") : put-ppt·put-report 때 붙인 PPT(files)가 있으면 PPT 버튼만, 없으면 예전처럼 화면 PDF
+  const repFile = (ext) => arr(repDoc && repDoc.files).find((f) => String(f.name || '').toLowerCase().endsWith(ext));
+  async function saveAttach(f, b) {
+    if (b.disabled) return;
+    const was = b.textContent; b.disabled = true; b.textContent = '받는 중…';
+    try { await saveFileOf(f); } catch (e) { toast('파일을 못 받았어 · 다시 해 줘'); }
+    b.disabled = false; b.textContent = was;
+  }
+  async function savePdf() {
+    const sl = arr(repDoc && repDoc.slides), b = $('deckPdf');
+    if (!sl.length || b.disabled) return;
+    b.disabled = true; b.textContent = 'PDF 만드는 중…';
+    const box = el('div'); box.style.cssText = 'position:fixed;left:-20000px;top:0;width:1280px;display:flex;flex-direction:column;gap:0';
+    try {
+      await loadJs('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+      await loadJs('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+      document.body.append(box);
+      const pages = sl.map((x, i) => { const s = el('div'); paintSlide(s, x, i); s.append(...slideBody(x), el('div', 's-pg', (i + 1) + ' / ' + sl.length)); s.style.cssText += ';aspect-ratio:auto;min-height:720px;height:auto;overflow:visible;border-radius:0'; box.append(s); return s; });
+      if (document.fonts && document.fonts.ready) await document.fonts.ready;
+      let pdf = null;
+      for (const s of pages) {
+        const c = await window.html2canvas(s, { scale: 2, backgroundColor: '#FFFFFF', logging: false, onclone: (_, cl) => rgbOnly(s, cl) });
+        const w = 297, h = w * c.height / c.width;
+        if (!pdf) pdf = new window.jspdf.jsPDF({ orientation: h > w ? 'p' : 'l', unit: 'mm', format: [w, h] }); else pdf.addPage([w, h], h > w ? 'p' : 'l');
+        pdf.addImage(c.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, w, h);
+      }
+      pdf.save('부산메리츠타워_' + String((repDoc && repDoc.title) || '보고서').replace(/[\\/:*?"<>|]/g, ' ').trim() + '.pdf');
+    } catch (e) { toast('PDF 못 만듦 — ' + (e && e.message || e)); }
+    finally { box.remove(); b.disabled = false; b.textContent = 'PDF'; }
+  }
+  function delReport() { if (repOpen) armDelete($('deckDel'), [repOpen], '정말 삭제?', '삭제'); }
+  function renderDeck() {
+    $('repList').hidden = true; $('deck').hidden = false; selBar();
+    const sl = arr(repDoc && repDoc.slides);
+    slideAt = Math.max(0, Math.min(slideAt, sl.length - 1));
+    $('deckTitle').textContent = (repDoc && repDoc.title) || '불러오는 중…';
+    $('deckPpt').hidden = !repFile('.pptx'); $('deckPdf').hidden = !!repFile('.pptx');
+    const one = deckMode === 'one';
+    $('modeScroll').setAttribute('aria-pressed', String(!one)); $('modeOne').setAttribute('aria-pressed', String(one));
+    $('slides').hidden = one; $('slide').hidden = !one; $('deckNav').hidden = !one;
+    if (!one) {   // 쭉 보기 : 모든 장을 위에서 아래로
+      $('deckNum').textContent = sl.length ? sl.length + '장' : '';
+      $('slides').replaceChildren(...sl.map((x, i) => { const s = el('div'); paintSlide(s, x, i); s.append(...slideBody(x), el('div', 's-pg', (i + 1) + ' / ' + sl.length)); return s; }));
+      return;
+    }
+    $('deckNum').textContent = sl.length ? (slideAt + 1) + ' / ' + sl.length : '';
+    $('prevSlide').disabled = slideAt <= 0; $('nextSlide').disabled = slideAt >= sl.length - 1;
+    const dots = $('dots'); dots.replaceChildren();
+    sl.forEach((_, i) => { const b = el('button', 'dot' + (i === slideAt ? ' on' : '')); b.type = 'button'; b.setAttribute('aria-label', (i + 1) + '장'); b.addEventListener('click', () => { slideAt = i; renderDeck(); }); dots.append(b); });
+    if (sl.length) paintSlide($('slide'), sl[slideAt], slideAt);
+    $('slide').replaceChildren(...(sl.length ? slideBody(sl[slideAt]) : []));
+  }
+  const CK = (i) => 'var(--c' + (i % 5 + 1) + ')';
+  const trend = (s) => { const m = /([+-])\d+(?:\.\d+)?%/.exec(String(s)); return m ? (m[1] === '+' ? 'up' : 'down') : ''; };   // '+3.6%' 늘어남, '-0.7%' 줄어듦
+  function paintSlide(node, x, i) { node.className = 'slide k-' + (x.type || 'bullets'); node.style.setProperty('--sc', CK(i)); }   // 장 종류는 k- (s- 는 안쪽 요소 이름과 겹침)
+  function slideBody(x) {   // 장 종류 : title · stats · bars · table · bullets · image (PPT 원본 쪽 그림)
+    const out = [], t = x.type || 'bullets';
+    if (t === 'image') { const im = el('img', 's-img'); im.alt = x.title || '보고서 쪽'; if (x.img) pageUrl(x.img).then((u) => { if (u) im.src = u; }); return [im]; }
+    if (x.kicker) out.push(el('div', 's-kicker', x.kicker));
+    if (x.title) out.push(el(t === 'title' ? 'h2' : 'h3', 's-title', x.title));
+    if (x.sub) out.push(el('div', 's-sub', x.sub));
+    if (t === 'title' && x.big) out.push(el('div', 's-big', x.big));
+    if (t === 'stats') {
+      const g = el('div', 's-stats');
+      arr(x.items).forEach((s, j) => {
+        const c = el('div', 's-stat'); c.style.setProperty('--k', CK(j)); const v = el('div', 'v', s.value || '');
+        if (s.unit) v.append(el('span', 'u', s.unit));
+        c.append(el('div', 'k', s.label || ''), v);
+        if (s.delta) c.append(el('div', 'd ' + trend(s.delta), s.delta));
+        g.append(c);
+      });
+      out.push(g);
+    } else if (t === 'bars') {
+      const lg = el('div', 's-legend'); arr(x.legend).forEach((n, i) => lg.append(el('span', i ? 'b' : null, n))); out.push(lg);
+      const box = el('div', 's-bars'), max = Math.max(1, ...arr(x.groups).flatMap((g) => arr(g.values).map(Number)));
+      for (const g of arr(x.groups)) {
+        const row = el('div', 's-group'); row.append(el('div', 'g', g.label || ''));
+        arr(g.values).forEach((v, i) => { const b = el('div', 's-bar' + (i ? ' b' : '')), bar = el('i'); bar.style.width = (Number(v) / max * 80).toFixed(1) + '%'; b.append(bar, el('span', null, Number(v).toLocaleString('ko-KR') + (x.unit ? ' ' + x.unit : ''))); row.append(b); });
+        box.append(row);
+      }
+      out.push(box);
+    } else if (t === 'table') {
+      const w = el('div', 's-tw'), tb = el('table', 's-table'), hr = el('tr'), body = el('tbody');
+      arr(x.head).forEach((h) => hr.append(el('th', null, h)));
+      arr(x.rows).forEach((r) => { const tr = el('tr'); arr(r).forEach((c) => tr.append(el('td', /^[+-]\d+(\.\d+)?%$/.test(String(c)) ? trend(c) : null, String(c)))); body.append(tr); });
+      const th = el('thead'); th.append(hr); tb.append(th, body); w.append(tb); out.push(w);
+    } else if (t === 'bullets') {
+      const ul = el('ul', 's-list'); arr(x.items).forEach((s) => ul.append(el('li', null, s))); out.push(ul);
+    }
+    if (x.note) out.push(el('div', 's-note', x.note));
+    return out;
+  }
+
+  // 날짜 바꾸기 · 구독
+  function watchDay() {
+    for (const k of ['day', 'chk', 'chat', 'cl']) if (subs[k]) subs[k]();
+    dayDoc = null; checks = { done: {}, notes: {}, result: {} }; chatMsgs = []; cnotes = {}; seenReplies = -1;
+    const date = viewDate;
+    subs.day = sub('days_' + date, (v) => { if (date !== viewDate) return; dayDoc = v && isDate(v.date) ? v : null; renderAll(); showTbm(); });
+    subs.chk = sub('chk_' + date, (v) => {
+      if (date !== viewDate || pending.has('chk_' + date)) return;
+      checks = { done: { ...((v && v.done) || {}) }, notes: { ...((v && v.notes) || {}) }, result: { ...((v && v.result) || {}) } };
+      renderTasks();
+    });
+    subs.chat = subList('chat_' + kstToday(), (l) => { if (date !== viewDate) return; chatMsgs = l.slice().sort((a, b) => String(a.at).localeCompare(String(b.at))); if (seenReplies < 0) seenReplies = replyCount(); renderChat(); });   // 처음 읽은 답은 '새 답'으로 안 셈
+    subs.cl = sub('cl_' + date, (v) => { if (date !== viewDate) return; cnotes = { ...((v && v.notes) || {}) }; renderTasks(); });
+  }
+  function go(date) {
+    if (date !== viewDate) {
+      viewDate = date; const past = date !== kstToday();   // 지난 판도 체크·메모 됨 → 그날 chk_<날짜>에 저장 (사용자 11/18 "날짜지난것도 체크나 메모 가능하게", 11/2~11/17은 읽기만) — 대화는 늘 오늘 대화
+      document.body.classList.toggle('past', past);
+      $('dLabel').textContent = past ? '지난 판 · 체크·메모 됨' : '오늘 업무';
+      watchDay();
+    }
+    showState(''); renderAll(); setDayNav();
+  }
+  function setDayNav() {   // dates = 최근 것 먼저
+    $('dayNav').hidden = !dates.length;
+    const sel = $('daySel'); sel.replaceChildren();
+    for (const d of dates) { const o = el('option', null, md(d) + ' (' + dow(d) + ')' + (d === kstToday() ? ' · 오늘' : '')); o.value = d; sel.append(o); }
+    if (viewDate) sel.value = viewDate;
+    const i = dates.indexOf(viewDate);
+    $('prevDay').disabled = i < 0 || i >= dates.length - 1; $('nextDay').disabled = i <= 0;
+    $('toToday').hidden = !dates.includes(kstToday());
+    $('toToday').style.visibility = viewDate === kstToday() ? 'hidden' : '';   // 오늘이면 안 보이게만 — 자리는 남겨서 ‹ › 위치가 안 바뀜 (사용자 11/2 "오늘 버튼이 생기면 좌우 버튼 위치가 바뀌어서 연속으로 못 눌러")
+  }
+  function renderAll() {
+    const d = dayDoc;
+    $('board').hidden = !d; $('foot').hidden = !d;
+    if (!d) return;
+    renderHeader(); renderTasks(); renderUpcoming(); renderMeeting(); renderChat(); paintCState();
+    $('foot').textContent = '올린 시각 ' + (stamp(d.updated) || '—') + ' · 매일 아침 TBM 발송 뒤 채워져 · 체크·메모는 PC와 폰 어디서나 같이 보여';
+  }
+
+  // 로그인 봉투 : 아이디 → 문서 이름, 비밀번호(PBKDF2 31만 회) → 비밀키를 잠근 키 (board.py set-login 이 만듦). 아이디·비밀번호는 어디에도 저장 안 함
+  async function loginDoc(id) { return 'bd_login_' + hex(new Uint8Array(await crypto.subtle.digest('SHA-256', te.encode('meritz-board-login|' + id.trim().toLowerCase())))).slice(0, 24); }
+  async function pwKey(pw, salt) {
+    const base = await crypto.subtle.importKey('raw', te.encode(pw), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 310000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  }
+  async function openSecret(id, pw) {
+    const s = await fs.collection('ppld').doc(await loginDoc(id)).get();
+    const d = s.exists ? s.data() : null;
+    if (!d || typeof d.v !== 'string') return '';
+    try { const u = fromB64(d.v); return td.decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: u.subarray(16, 28) }, await pwKey(pw, u.subarray(0, 16)), u.subarray(28))); }
+    catch (e) { return ''; }
+  }
+  async function keyWorks(secret) {   // 그 키로 목록(index)이 풀리면 맞는 키
+    const k = await keysOf(secret);
+    const s = await fs.collection('ppld').doc(k.pfx + 'index').get();
+    if (!s.exists || typeof s.data().v !== 'string') return null;
+    try { const u = fromB64(s.data().v); await crypto.subtle.decrypt({ name: 'AES-GCM', iv: u.subarray(0, 12) }, k.key, u.subarray(12)); return k; } catch (e) { return null; }
+  }
+  function remember(secret, uid, keepId) {   // 로그인은 창 닫을 때까지만, '아이디 저장'이면 아이디만 이 브라우저에 기억
+    try { sessionStorage.setItem('mb_auth', secret); if (keepId) localStorage.setItem('mb_uid', uid); else localStorage.removeItem('mb_uid'); } catch (e) {}
+  }
+  function logout() { try { sessionStorage.removeItem('mb_auth'); localStorage.removeItem('mb_auth'); } catch (e) {} Promise.resolve(auth && auth.signOut()).catch(() => {}).finally(() => location.reload()); }
+  // 파이어베이스 로그인 (2026-10-30 규칙 잠금, 사용자 "잠궈") : 판 아이디·비밀번호에서 계정 메일·비밀번호를 만들어 로그인 (board.py fb_cred·운동 앱과 같은 방식).
+  // 로그인한 계정만 ppld 를 읽고 씀. 계정이 아직 없거나 꺼져 있으면(잠그기 전) 그냥 넘어감
+  async function fbSignIn(id, pw) {
+    const u = id.trim().toLowerCase(), sha = async (t) => hex(new Uint8Array(await crypto.subtle.digest('SHA-256', te.encode(t))));
+    try { await auth.signInWithEmailAndPassword('mb-' + (await sha('meritz-board-fb|' + u)).slice(0, 20) + '@automatic-becf5.firebaseapp.com', await sha('meritz-board-fbpw|' + u + '|' + pw)); }
+    catch (e) { console.warn('파이어베이스 로그인 안 됨', e.code); }
+  }
+  function showAuth() {
+    showState(''); $('auth').hidden = false;
+    let saved = ''; try { saved = localStorage.getItem('mb_uid') || ''; } catch (e) {}
+    if (saved) { $('authId').value = saved; $('authKeep').checked = true; }
+    $('auth').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = $('authId').value.trim(), pw = $('authPw').value, keep = $('authKeep').checked;
+      const err = (m) => { $('authErr').textContent = m; $('authGo').disabled = false; };
+      if (!id || !pw) return err('아이디와 비밀번호를 넣어줘.');
+      $('authGo').disabled = true; $('authErr').textContent = '확인하는 중…';
+      try {
+        await fbSignIn(id, pw);
+        const sec = await openSecret(id, pw);
+        if (!sec || !(await keyWorks(sec))) return err('아이디나 비밀번호가 틀렸어.');
+        remember(sec, id, keep);
+        location.reload();
+      } catch (x) { err(x && x.code === 'permission-denied' ? '아이디나 비밀번호가 틀렸어.' : '연결이 안 돼. 인터넷 확인하고 다시 해줘.'); }
+    });
+    (saved ? $('authPw') : $('authId')).focus();
+  }
+
+  // 시작
+  (async () => {
+    if (!window.crypto || !crypto.subtle) { showState('이 브라우저는 암호화를 지원하지 않아. 크롬·엣지 최신 버전으로 열어줘.'); return; }
+    try {
+      firebase.initializeApp(FB);
+      fs = firebase.firestore();
+      fs.settings({ experimentalAutoDetectLongPolling: true, merge: true });
+      auth = firebase.auth();
+      await auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);   // 판 로그인처럼 창 닫을 때까지만
+      await new Promise((r) => { const off = auth.onAuthStateChanged(() => { off(); r(); }); });   // 저장된 로그인 복구 기다림 (안 기다리면 첫 구독이 거절됨)
+      if (!SECRET) { showAuth(); return; }
+      await initCrypto();
+    } catch (e) { showState('연결 준비에 실패했어. 새로고침해 줘.'); return; }
+    $('tabs').hidden = false;
+    buildTbmForm();
+    $('logout').addEventListener('click', logout);
+    $('tabDay').addEventListener('click', () => setTab('day'));
+    $('tabRep').addEventListener('click', () => { if (document.body.dataset.tab === 'rep' && repOpen) { closeReport(); toTop(); } else setTab('rep'); });   // 보고서 보다가 '보고서' 한 번 더 누르면 목록으로 (사용자 10/29 "자료를 한 번 더 누르면 목록으로 가던가")
+    $('tabFile').addEventListener('click', () => setTab('file'));
+    $('tabLog').addEventListener('click', () => setTab('log'));
+    $('logPrev').addEventListener('click', () => { logDate = logAdd(logDate || kstToday(), -1); renderLog(); });
+    $('logNext').addEventListener('click', () => { const n = logAdd(logDate || kstToday(), 1); if (n <= kstToday()) { logDate = n; renderLog(); } });
+    $('logToday').addEventListener('click', () => { logDate = kstToday(); renderLog(); });
+    $('logDate').addEventListener('change', () => { const v = $('logDate').value; if (isDate(v) && v <= kstToday()) { logDate = v; renderLog(); } });
+    $('logXd').addEventListener('click', () => logExcel(false));
+    $('logXm').addEventListener('click', () => logExcel(true));
+    $('daySel').addEventListener('change', () => go($('daySel').value));
+    $('prevDay').addEventListener('click', () => { const i = dates.indexOf(viewDate); if (i >= 0 && i < dates.length - 1) go(dates[i + 1]); });
+    $('nextDay').addEventListener('click', () => { const i = dates.indexOf(viewDate); if (i > 0) go(dates[i - 1]); });
+    $('toToday').addEventListener('click', () => go(kstToday()));
+    $('deckBack').addEventListener('click', closeReport);
+    $('modeScroll').addEventListener('click', () => setMode('scroll'));
+    $('modeOne').addEventListener('click', () => setMode('one'));
+    $('deckPdf').addEventListener('click', savePdf);
+    $('deckPpt').addEventListener('click', () => { const f = repFile('.pptx'); if (f) saveAttach(f, $('deckPpt')); });
+    $('deckDel').addEventListener('click', delReport);
+    $('repSel').addEventListener('click', () => { selMode = !selMode; sel.clear(); renderReports(); });
+    $('repSelDel').addEventListener('click', () => { if (sel.size) armDelete($('repSelDel'), [...sel], '정말 ' + sel.size + '개 삭제?', sel.size + '개 삭제'); });
+    $('prevSlide').addEventListener('click', () => { slideAt--; renderDeck(); });
+    $('nextSlide').addEventListener('click', () => { slideAt++; renderDeck(); });
+    document.addEventListener('keydown', (e) => {
+      if (document.body.dataset.tab !== 'rep' || !repOpen || deckMode !== 'one' || /^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || '')) return;
+      if (e.key === 'ArrowLeft') { slideAt--; renderDeck(); } else if (e.key === 'ArrowRight') { slideAt++; renderDeck(); }
+    });
+    let sx = null;
+    $('slide').addEventListener('pointerdown', (e) => { sx = e.clientX; });
+    $('slide').addEventListener('pointerup', (e) => { if (sx === null) return; const dx = e.clientX - sx; sx = null; if (Math.abs(dx) > 50) { slideAt += dx < 0 ? 1 : -1; renderDeck(); } else if (e.button === 0) backToList(); });   // 옆으로 밀면 장 넘김, 톡 누르면 목록으로
+    $('slides').addEventListener('click', backToList);   // 쭉 보기 : 아무 장이나 누르면 목록으로
+    subs.repIndex = sub('rep_index', (v) => { repIndex = arr(v && v.list); $('repCount').hidden = !repIndex.length; $('repCount').textContent = repIndex.length; if (document.body.dataset.tab === 'rep' && !repOpen) renderReports(); });
+    subs.files = sub('files', (v) => { fileIdx = arr(v && v.list); $('fileCount').hidden = !fileIdx.length; $('fileCount').textContent = fileIdx.length; if (document.body.dataset.tab === 'file') renderFiles(); });
+    let t0 = 'day'; try { t0 = localStorage.getItem('mb_tab') || 'day'; } catch (e) {}
+    setTab(['rep', 'file', 'log'].includes(t0) ? t0 : 'day');
+    $('chatForm').addEventListener('submit', (e) => { e.preventDefault(); sendChat(); });
+    $('chatText').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendChat(); } });
+    $('chatText').addEventListener('focus', openDock);
+    $('chatText').addEventListener('input', growChat);
+    $('attBtn').addEventListener('click', () => $('chatImg').click());
+    $('chatImg').addEventListener('change', () => { const f = $('chatImg').files[0]; $('chatImg').value = ''; attach(f); });
+    $('chatText').addEventListener('paste', (e) => {   // 캡처 붙여넣기는 사진, 복사한 파일은 파일로
+      const cd = e.clipboardData; if (!cd) return;
+      // 11/13 사용자 "글자 붙여넣기도 사진으로 들어가는 건 문제" : 파워포인트·한쇼·엑셀에서 글을 복사하면 그림도 같이 실려 옴 → 글자가 있으면 글자로
+      if ((cd.getData('text/plain') || '').trim()) return;
+      const fl = Array.from(cd.files || []); const f = fl.find((x) => x.type.startsWith('image/')) || fl[0];
+      if (f) { e.preventDefault(); attach(f); }
+    });
+    // 11/13 사용자 "폰에서 판 쓸 때 자판 때문에 대화창이 가려" : 자판이 화면을 덮기만 하는 폰(요즘 크롬·아이폰)은 자판 높이만큼 대화창을 올림
+    if (window.visualViewport) {
+      const vv = window.visualViewport;
+      const fitDock = () => {
+        const kb = vv.scale > 1.05 ? 0 : Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop));   // 손가락으로 확대한 땐 그대로
+        $('dock').style.bottom = kb > 60 ? kb + 'px' : '';
+        $('msgs').style.maxHeight = kb > 60 ? Math.max(90, Math.round(vv.height - 190)) + 'px' : '';
+      };
+      vv.addEventListener('resize', fitDock); vv.addEventListener('scroll', fitDock);
+    }
+    // 끌어다 놓기 (사용자 10/30 "파일 드래그로도 첨부되게") : 창 어디에 놓아도 메모에 첨부, 여러 개면 하나씩 차례로
+    let dragN = 0;
+    const hasFiles = (e) => Array.from((e.dataTransfer && e.dataTransfer.types) || []).includes('Files');
+    const dropOn = () => true;   // 첨부도 늘 오늘 대화로
+    window.addEventListener('dragenter', (e) => { if (!hasFiles(e) || !dropOn()) return; e.preventDefault(); dragN++; $('drop').hidden = false; });
+    window.addEventListener('dragover', (e) => { if (!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = dropOn() ? 'copy' : 'none'; });
+    window.addEventListener('dragleave', (e) => { if (!hasFiles(e)) return; if (--dragN <= 0) { dragN = 0; $('drop').hidden = true; } });
+    window.addEventListener('drop', async (e) => { if (!hasFiles(e)) return; e.preventDefault(); dragN = 0; $('drop').hidden = true; if (!dropOn()) return; for (const f of Array.from(e.dataTransfer.files)) await attach(f); });
+    $('dockClose').addEventListener('click', () => { closeDock(); $('chatText').blur(); });
+    document.addEventListener('pointerdown', (e) => { if (dockOpen() && !$('dock').contains(e.target)) closeDock(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && dockOpen()) { closeDock(); $('chatText').blur(); } });
+    document.addEventListener('focusout', () => setTimeout(() => { if (deferred && !tasksBusy()) renderTasks(); }, 0));
+    $('tbmForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const people = {};
+      PEOPLE.forEach((p, i) => { people[p] = $('pp-' + i).value; });
+      const body = { date: tbmDate, people, work: $('tbmWork').value.trim(), vendors: $('tbmVendors').value.trim(), at: nowIso() };
+      const off = PEOPLE.filter((p) => people[p] !== '출근').map((p) => p + ' ' + people[p]).join(', ');
+      addEvent('내일 TBM 저장 · ' + md(tbmDate) + ' · ' + (off || '전원 출근') + (body.work ? ' · 작업: ' + body.work : '') + (body.vendors ? ' · 업체: ' + body.vendors : ''), { kind: 'tbm', item: tbmDate });
+      tbmDoc = body; tbmDirty = false;
+      save('tbm_' + tbmDate, body);
+      showTbm();
+      toast('내일 TBM 저장됨');
+    });
+    subs.index = sub('index', (v, exists) => {
+      if (exists && v === undefined) { logout(); return; }   // 저장된 키가 안 맞으면 다시 로그인
+      dates = arr(v && v.dates).filter(isDate).sort().reverse();
+      loadPast();
+      if (viewDate && dates.includes(viewDate)) { go(viewDate); return; }   // 지난 판 보던 중이면 그대로
+      if (!dates.includes(kstToday())) { setDayNav(); showState('오늘 업무가 아직 안 올라왔어. 아침 TBM 발송 뒤 채워져. (위에서 지난 판은 볼 수 있어)'); $('board').hidden = true; $('foot').hidden = true; return; }
+      go(kstToday());
+    });
+    subs.status = sub('status', (v) => { statusAt = (v && Date.parse(v.at)) || 0; paintCState(); });
+    subs.doing = sub('doing', (v) => { doing = v || null; if (typingEl && typingEl.isConnected) typingEl.textContent = typingText(); });
+    setInterval(paintCState, 60000);
+    watchTbm();
+  })();
+  // 앱(안드로이드 웹뷰)에서만 : 맨 위에서 아래로 당기면 새로고침 (사용자 10/29 "앱에서는 새로고침이 최상단에서 아래로 드래그하면 되게, 운동 앱처럼") — 휴대폰 브라우저는 자체 당겨서 새로고침이 있어서 뺌
+  (function pullToRefresh() {
+    if (!/; wv\)/.test(navigator.userAgent)) return;
+    const ind = $('ptr'), txt = $('ptrText'), TH = 70, MAX = 100;
+    let y0 = 0, on = false, dist = 0;
+    document.addEventListener('touchstart', (e) => {
+      let inner = 0;   // 어디서 시작해도 됨 (사용자 10/29 "어떤 경우든 새로고침돼야지") — 단 메모 기록처럼 안쪽 스크롤 칸이 맨 위가 아니면 그 칸 스크롤이 먼저
+      for (let x = e.target; x && x.nodeType === 1 && x !== document.body; x = x.parentElement) {
+        const oy = getComputedStyle(x).overflowY;
+        if ((oy === 'auto' || oy === 'scroll') && x.scrollHeight > x.clientHeight + 1) { inner = x.scrollTop; break; }
+      }
+      on = window.scrollY <= 0 && inner <= 0;
+      if (on) { y0 = e.touches[0].clientY; dist = 0; }
+    }, { passive: true });
+    document.addEventListener('touchmove', (e) => {
+      if (!on) return;
+      dist = e.touches[0].clientY - y0;
+      if (dist <= 0 || window.scrollY > 0) { ind.style.height = '0px'; ind.classList.remove('ready'); return; }
+      ind.style.height = 'calc(' + Math.min(dist * 0.5, MAX) + 'px + env(safe-area-inset-top, 0px))';
+      const ready = dist >= TH; ind.classList.toggle('ready', ready); txt.textContent = ready ? '놓으면 새로고침' : '당겨서 새로고침';
+    }, { passive: true });
+    document.addEventListener('touchend', () => {
+      if (!on) return; on = false;
+      if (dist >= TH && window.scrollY <= 0) { ind.style.height = 'calc(44px + env(safe-area-inset-top, 0px))'; ind.classList.add('spin'); ind.classList.remove('ready'); txt.textContent = '새로고침 중…'; setTimeout(() => location.reload(), 300); }
+      else { ind.style.transition = 'height .2s'; ind.style.height = '0px'; setTimeout(() => { ind.style.transition = ''; }, 200); }
+      dist = 0;
+    });
+  })();
+})();
+</script>
+</body>
+</html>
